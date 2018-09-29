@@ -25,11 +25,11 @@ namespace UI
         /// <summary>
         /// Transfer ownership to newUser
         /// </summary>
-        Task TransferOwnershipTo(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService);
+        IReadOnlyList<TransferingResult> TransferOwnershipTo(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService);
 
         /// <summary>
         /// Delete permission to disable view and edit a file
         /// </summary>
-        Task DeleteOwnershipPermission(FileDTO file);
+        void DeleteOwnershipPermission(FileDTO file);
     }
 }

@@ -2,8 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace UI
 {
@@ -55,13 +53,13 @@ namespace UI
             };
         }
 
-        public async Task DeleteOwnershipPermission(FileDTO file)
+        public void DeleteOwnershipPermission(FileDTO file)
         {
             var deleteCommand = _driveService.Permissions.Delete(file.Id, file.OwnershipPermissionId);
-            await deleteCommand.ExecuteAsync();
+            deleteCommand.Execute();
         }
 
-        public async Task TransferOwnershipTo(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService)
+        public IReadOnlyList<TransferingResult> TransferOwnershipTo(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService)
         {
             var newOwner = newOwnerGoogleService.GetUserInfo();
             var commandsDto = files
@@ -83,16 +81,37 @@ namespace UI
                 })
                 .ToArray();
 
+            var result = new List<TransferingResult>();
             foreach (var commandDto in commandsDto)
             {
                 // introducing new owner of a file
                 var command = commandDto.command;
-                await command.ExecuteAsync();
+
+                try
+                {
+                    command.Execute();
+                }
+                catch (Exception e)
+                {
+                    result.Add(new TransferingResult
+                    {
+                        Exception = e,
+                        File = commandDto.file
+                    });
+                    continue;
+                }
 
                 // removing view and edit permissions of an old owner
                 var file = commandDto.file;
-                await newOwnerGoogleService.DeleteOwnershipPermission(file);
+                newOwnerGoogleService.DeleteOwnershipPermission(file);
+
+                result.Add(new TransferingResult
+                {
+                    File = commandDto.file
+                });
             }
+
+            return result;
         }
     }
 }

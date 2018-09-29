@@ -16,6 +16,8 @@ namespace UI
         /// Авторизоваться в Google Drive
         /// </summary>
         Task<IConfigurableHttpClientInitializer> Authorize();
+
+        void Clear();
     }
 
 }

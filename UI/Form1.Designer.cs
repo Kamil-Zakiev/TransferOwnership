@@ -17,6 +17,10 @@
             {
                 components.Dispose();
             }
+
+            OldOwnerAuthService.Clear();
+            NewOwnerAuthService.Clear();
+
             base.Dispose(disposing);
         }
 
@@ -73,11 +77,11 @@
             // AddPermToTest
             // 
             this.AddPermToTest.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.AddPermToTest.Location = new System.Drawing.Point(26, 264);
+            this.AddPermToTest.Location = new System.Drawing.Point(26, 287);
             this.AddPermToTest.Name = "AddPermToTest";
-            this.AddPermToTest.Size = new System.Drawing.Size(173, 35);
+            this.AddPermToTest.Size = new System.Drawing.Size(173, 24);
             this.AddPermToTest.TabIndex = 5;
-            this.AddPermToTest.Text = "Сделать владельцем тест-файла";
+            this.AddPermToTest.Text = "Сделать владельцем";
             this.AddPermToTest.UseVisualStyleBackColor = true;
             this.AddPermToTest.Click += new System.EventHandler(this.AddPermToTest_Click);
             // 
@@ -85,7 +89,7 @@
             // 
             this.button1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.button1.Font = new System.Drawing.Font("Times New Roman", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.button1.Location = new System.Drawing.Point(26, 207);
+            this.button1.Location = new System.Drawing.Point(26, 230);
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(173, 38);
             this.button1.TabIndex = 6;
@@ -96,7 +100,7 @@
             // pictureBox2
             // 
             this.pictureBox2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.pictureBox2.Location = new System.Drawing.Point(213, 214);
+            this.pictureBox2.Location = new System.Drawing.Point(213, 237);
             this.pictureBox2.Name = "pictureBox2";
             this.pictureBox2.Size = new System.Drawing.Size(23, 23);
             this.pictureBox2.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
@@ -108,7 +112,7 @@
             this.label1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label1.AutoSize = true;
             this.label1.Font = new System.Drawing.Font("Times New Roman", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.label1.Location = new System.Drawing.Point(242, 219);
+            this.label1.Location = new System.Drawing.Point(242, 242);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(31, 15);
             this.label1.TabIndex = 8;
@@ -125,14 +129,14 @@
             this.textBox1.Name = "textBox1";
             this.textBox1.ReadOnly = true;
             this.textBox1.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.textBox1.Size = new System.Drawing.Size(487, 138);
+            this.textBox1.Size = new System.Drawing.Size(487, 170);
             this.textBox1.TabIndex = 9;
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(511, 321);
+            this.ClientSize = new System.Drawing.Size(511, 344);
             this.Controls.Add(this.textBox1);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.pictureBox2);

@@ -2,10 +2,7 @@
 using Google.Apis.Http;
 using Google.Apis.Util.Store;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,6 +15,8 @@ namespace UI
         string[] _scopes;
 
         string _credPath;
+
+        FileDataStore _store;
 
         public GoogleAuthorizeService(string configFile, string[] scopes, string credPath)
         {
@@ -34,6 +33,7 @@ namespace UI
             _configFile = configFile;
             _scopes = scopes;
             _credPath = credPath;
+            _store = new FileDataStore(_credPath, true);
         }
 
         public async Task<IConfigurableHttpClientInitializer> Authorize()
@@ -44,13 +44,17 @@ namespace UI
                     GoogleClientSecrets.Load(stream).Secrets,
                     _scopes,
                     "user",
-                    CancellationToken.None
-                    // todo: доработать сохранение токенов 
-                      , new FileDataStore(_credPath, true)
-                    );
+                    CancellationToken.None,
+                    _store);
 
                 return creds;
             }
+        }
+
+        public void Clear()
+        {
+            var t = _store.ClearAsync();
+            t.Wait();
         }
     }
 }

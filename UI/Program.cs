@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Google.Apis.Drive.v3;
+using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -16,7 +18,11 @@ namespace UI
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1());
+
+            var configFilePath = ConfigurationManager.AppSettings["GoogleAppConfigFile"];
+            var oldAuthService = new GoogleAuthorizeService(configFilePath, new[] { DriveService.Scope.Drive }, "token.json");
+            var newAuthService = new GoogleAuthorizeService(configFilePath, new[] { DriveService.Scope.Drive }, "token2.json");
+            Application.Run(new Form1(oldAuthService, newAuthService));
         }
     }
 }
