@@ -1,4 +1,5 @@
 ﻿using Google.Apis.Auth.OAuth2;
+using Google.Apis.Auth.OAuth2.WinForms;
 using Google.Apis.Http;
 using Google.Apis.Util.Store;
 using System;
@@ -45,7 +46,9 @@ namespace UI
                     _scopes,
                     "user",
                     CancellationToken.None,
-                    _store);
+                    _store,
+                    new EmbeddedBrowserCodeReceiver()
+                    );
 
                 return creds;
             }

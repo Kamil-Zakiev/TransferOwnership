@@ -59,7 +59,7 @@ namespace UI
             deleteCommand.Execute();
         }
 
-        public IReadOnlyList<TransferingResult> TransferOwnershipTo(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService)
+        public IReadOnlyList<TransferingResult> TransferOwnershipTo(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<int, FileDTO> callback)
         {
             var newOwner = newOwnerGoogleService.GetUserInfo();
             var commandsDto = files
@@ -82,13 +82,15 @@ namespace UI
                 .ToArray();
 
             var result = new List<TransferingResult>();
-            foreach (var commandDto in commandsDto)
+            for (int i = 0; i < commandsDto.Length; i++)
             {
+                var commandDto = commandsDto[i];
                 // introducing new owner of a file
                 var command = commandDto.command;
 
                 try
                 {
+                    callback(i, commandDto.file);
                     command.Execute();
                 }
                 catch (Exception e)

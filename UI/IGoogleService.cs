@@ -25,7 +25,7 @@ namespace UI
         /// <summary>
         /// Transfer ownership to newUser
         /// </summary>
-        IReadOnlyList<TransferingResult> TransferOwnershipTo(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService);
+        IReadOnlyList<TransferingResult> TransferOwnershipTo(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<int, FileDTO> callback);
 
         /// <summary>
         /// Delete permission to disable view and edit a file

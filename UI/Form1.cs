@@ -5,7 +5,6 @@ using Google.Apis.Services;
 using System.Text;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Threading;
 using System.Linq;
 
 namespace UI
@@ -97,7 +96,10 @@ namespace UI
 
         private void AddPermToTest_Click(object sender, EventArgs e)
         {
-            var result = OldOwnerGoogleService.TransferOwnershipTo(files, NewOwnerGoogleService);
+            var result = OldOwnerGoogleService.TransferOwnershipTo(files, NewOwnerGoogleService, (i, file) =>
+            {
+                label2.Text = (i+1) + "/" + files.Count;
+            });
             var succeedCount = result.Count(r => r.Success);
 
             var messageBuilder = new StringBuilder($"{succeedCount} файлов из {result.Count} теперь имеют нового владельца!");
@@ -113,6 +115,18 @@ namespace UI
                 MessageBoxIcon.Information);
 
             UpdateFileList();
+
+            label2.Text = "";
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            OldOwnerAuthService.Clear();
+            NewOwnerAuthService.Clear();
+
+            textBox1.Text = label1.Text = OldOnerNameLabel.Text = "";
+            pictureBox1.Image = pictureBox2.Image = null;
+            OldOwnerGoogleService = NewOwnerGoogleService = null;
         }
     }
 }
