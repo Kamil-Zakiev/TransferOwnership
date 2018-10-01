@@ -22,5 +22,7 @@ namespace UI
         /// Identifier of a permission that represents an ownership
         /// </summary>
         public string OwnershipPermissionId { get; set; }
+
+        public string MimeType { get; set; }
     }
 }

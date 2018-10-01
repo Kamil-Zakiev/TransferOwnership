@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -31,5 +32,9 @@ namespace UI
         /// Delete permission to disable view and edit a file
         /// </summary>
         void DeleteOwnershipPermission(FileDTO file);
+
+        void ReloadFromNewUser(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<int, FileDTO> callback);
+
+        void UploadFile(FileDTO file, Stream stream);
     }
 }

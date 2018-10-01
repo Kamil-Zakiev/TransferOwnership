@@ -6,6 +6,7 @@ using System.Text;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Threading;
 
 namespace UI
 {
@@ -20,6 +21,7 @@ namespace UI
             InitializeComponent();
             OldOwnerAuthService = oldOwnerAuthService;
             NewOwnerAuthService = newOwnerAuthService;
+            progressBar1.Visible = false;
         }
 
         private IGoogleService OldOwnerGoogleService;
@@ -96,27 +98,61 @@ namespace UI
 
         private void AddPermToTest_Click(object sender, EventArgs e)
         {
-            var result = OldOwnerGoogleService.TransferOwnershipTo(files, NewOwnerGoogleService, (i, file) =>
+            progressBar1.Visible = true;
+            progressBar1.Value = 1;
+            progressBar1.Maximum = files.Count;
+
+            var syncContextScheduler = TaskScheduler.FromCurrentSynchronizationContext();
+
+            var transferTask = new Task<IReadOnlyList<TransferingResult>>(() => OldOwnerGoogleService.TransferOwnershipTo(files, NewOwnerGoogleService, (i, file) =>
             {
-                label2.Text = (i+1) + "/" + files.Count;
-            });
-            var succeedCount = result.Count(r => r.Success);
+                var task = new Task(() => progressBar1.Increment(1));
+                task.Start(syncContextScheduler);
+            }));
 
-            var messageBuilder = new StringBuilder($"{succeedCount} файлов из {result.Count} теперь имеют нового владельца!");
-            if (succeedCount != result.Count)
+            transferTask.ContinueWith(t =>
             {
-                messageBuilder.AppendLine(Environment.NewLine + "Остальные файлы перенести не удалось.");
-            }
+                var result = t.Result;
+                var loadedFiles = result.Where(r => !r.Success).Select(r => r.File).ToArray();
 
-            MessageBox.Show(null,
-                messageBuilder.ToString(), 
-                "Сообщение", 
-                MessageBoxButtons.OK, 
-                MessageBoxIcon.Information);
+                if (!loadedFiles.Any())
+                {
+                    MessageBox.Show(null,
+                           "Перенос завершен",
+                           "Сообщение",
+                           MessageBoxButtons.OK,
+                           MessageBoxIcon.Information);
 
-            UpdateFileList();
+                    UpdateFileList();
+                    progressBar1.Visible = false;
 
-            label2.Text = "";
+                    return;
+                }
+
+                var reloadTask = Task.Run(() =>
+                {
+                    OldOwnerGoogleService.ReloadFromNewUser(loadedFiles, NewOwnerGoogleService, (i, file) =>
+                    {
+                        var task = new Task(() => progressBar1.Increment(1));
+                        task.Start(syncContextScheduler);
+                    });
+                });
+
+                reloadTask.ContinueWith(tsk =>
+                {
+                    MessageBox.Show(null,
+                          "Перенос завершен",
+                          "Сообщение",
+                          MessageBoxButtons.OK,
+                          MessageBoxIcon.Information);
+                    UpdateFileList();
+
+                    progressBar1.Visible = false;
+                }, syncContextScheduler);
+
+            }, syncContextScheduler);
+
+            transferTask.Start();
         }
 
         private void button2_Click(object sender, EventArgs e)

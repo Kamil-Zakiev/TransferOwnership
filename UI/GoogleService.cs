@@ -1,7 +1,9 @@
 ﻿using Google.Apis.Drive.v3;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net;
 
 namespace UI
 {
@@ -21,7 +23,7 @@ namespace UI
         {
             var listRequest = _driveService.Files.List();
 
-            listRequest.Fields = "files(owners,ownedByMe,name,id)";
+            listRequest.Fields = "files(owners,ownedByMe,name,id,mimeType)";
             var files = listRequest.Execute().Files;
 
             var currentUser = GetUserInfo();
@@ -32,7 +34,8 @@ namespace UI
                 {
                     Id = f.Id,
                     Name = f.Name,
-                    OwnershipPermissionId = f.Owners.First(owner => owner.EmailAddress == currentUser.EmailAddress).PermissionId
+                    OwnershipPermissionId = f.Owners.First(owner => owner.EmailAddress == currentUser.EmailAddress).PermissionId,
+                    MimeType = f.MimeType
                 })
                 .ToArray();
         }
@@ -90,8 +93,8 @@ namespace UI
 
                 try
                 {
-                    callback(i, commandDto.file);
                     command.Execute();
+                    callback(i, commandDto.file);
                 }
                 catch (Exception e)
                 {
@@ -114,6 +117,38 @@ namespace UI
             }
 
             return result;
+        }
+
+        public void ReloadFromNewUser(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<int, FileDTO> callback)
+        {
+            for (int i = 0; i < files.Count; i++)
+            {
+                var file = files[i];
+                var request = _driveService.Files.Get(file.Id);
+                var stream = new MemoryStream();
+                
+                // download
+                request.Download(stream);
+
+                // upload
+                stream.Seek(0, SeekOrigin.Begin);
+                newOwnerGoogleService.UploadFile(file, stream);
+
+                // delete
+                _driveService.Files.Delete(file.Id).Execute();
+
+                callback(i, file);
+            }
+        }
+
+        public void UploadFile(FileDTO file, Stream stream)
+        {
+            var a = _driveService.Files.Create(new Google.Apis.Drive.v3.Data.File
+            {
+                Name = file.Name
+            }, stream, file.MimeType);
+
+            a.Upload();
         }
     }
 }
