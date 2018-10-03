@@ -36,5 +36,7 @@ namespace UI
         void ReloadFromNewUser(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<int, FileDTO> callback);
 
         void UploadFile(FileDTO file, Stream stream);
+
+        void RecoverParents(IReadOnlyList<FileDTO> dirs);
     }
 }
