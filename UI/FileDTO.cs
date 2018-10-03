@@ -24,5 +24,7 @@ namespace UI
         public string OwnershipPermissionId { get; set; }
 
         public string MimeType { get; set; }
+
+        public IList<string> Parents { get; internal set; }
     }
 }
