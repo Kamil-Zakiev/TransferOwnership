@@ -23,7 +23,7 @@ namespace UI
         {
             var listRequest = _driveService.Files.List();
 
-            listRequest.Fields = "files(owners,ownedByMe,name,id,mimeType,parents)";
+            listRequest.Fields = "files(owners,ownedByMe,name,id,mimeType,parents,explicitlyTrashed)";
             var files = listRequest.Execute().Files;
 
             var currentUser = GetUserInfo();
@@ -36,7 +36,8 @@ namespace UI
                     Name = f.Name,
                     OwnershipPermissionId = f.Owners.First(owner => owner.EmailAddress == currentUser.EmailAddress).PermissionId,
                     MimeType = f.MimeType,
-                    Parents = f.Parents
+                    Parents = f.Parents,
+                    ExplicitlyTrashed = f.ExplicitlyTrashed
                 })
                 .ToArray();
         }
@@ -190,12 +191,27 @@ namespace UI
         public void UploadFile(FileDTO file, Stream stream)
         {
             var a = _driveService.Files.Create(new Google.Apis.Drive.v3.Data.File
-            {
-                Name = file.Name,
-                Parents = file.Parents
-            }, stream, file.MimeType);
-
+                {
+                    Name = file.Name,
+                    Parents = file.Parents
+                }, stream, file.MimeType);
+            a.Fields = "id";
             a.Upload();
+
+            var needsToBeTrashed = file.ExplicitlyTrashed.HasValue && file.ExplicitlyTrashed.Value;
+            if (!needsToBeTrashed)
+            {
+                return;
+            }
+
+            // only re-uploaded files needs to be explicitly trashed
+            var loadedFileId = a.ResponseBody.Id;
+
+            var updateCommand = _driveService.Files.Update(new Google.Apis.Drive.v3.Data.File
+                {
+                    Trashed = true
+                }, loadedFileId);
+            updateCommand.Execute();
         }
     }
 }

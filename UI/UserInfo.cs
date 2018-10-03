@@ -6,8 +6,6 @@ using System.Threading.Tasks;
 
 namespace UI
 {
-
-
     /// <summary>
     /// User's DTO
     /// </summary>

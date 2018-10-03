@@ -26,5 +26,7 @@ namespace UI
         public string MimeType { get; set; }
 
         public IList<string> Parents { get; internal set; }
+
+        public bool? ExplicitlyTrashed { get; set; }
     }
 }
