@@ -118,35 +118,50 @@ namespace UI
                 var file = commandDto.file;
                 newOwnerGoogleService.DeleteOwnershipPermission(file);
 
-                if (file.MimeType == "application/vnd.google-apps.folder")
-                {
-                    newOwnerGoogleService.RecoverParents(file);
-                }
-
                 result.Add(new TransferingResult
                 {
                     File = commandDto.file
                 });
             }
 
+            // correct dirs chain
+            newOwnerGoogleService.RecoverParents(dirs);
+
             return result;
         }
 
-        public void RecoverParents(FileDTO file)
+        private string GetRootFolderId()
         {
-            var getCommand = _driveService.Files.Get(file.Id);
-            getCommand.Fields = "*";
-            var originFile = getCommand.Execute();
+            var rootgetCommand = _driveService.Files.Get("root");
+            rootgetCommand.Fields = "id";
+            return rootgetCommand.Execute().Id;
+        }
 
-            var updateCommand =_driveService.Files.Update(new Google.Apis.Drive.v3.Data.File { }, file.Id);
-            updateCommand.RemoveParents = string.Join(",", originFile.Parents);
-            updateCommand.AddParents = string.Join(",", file.Parents);
+        public void RecoverParents(IReadOnlyList<FileDTO> dirs)
+        {
+            var rootId = GetRootFolderId();
 
-            updateCommand.Execute();
+            foreach (var dir in dirs)
+            {
+                var getCommand = _driveService.Files.Get(dir.Id);
+                getCommand.Fields = "id,parents";
+                var originFile = getCommand.Execute();
+
+                if (originFile.Parents == null || originFile.Parents.Count == 1 || !originFile.Parents.Contains(rootId))
+                {
+                    continue;
+                }
+
+                var updateCommand = _driveService.Files.Update(new Google.Apis.Drive.v3.Data.File { }, originFile.Id);
+                updateCommand.RemoveParents = rootId;
+                updateCommand.Execute();
+            }            
         }
 
         public void ReloadFromNewUser(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<int, FileDTO> callback)
         {
+            var rootId = GetRootFolderId();
+
             for (int i = 0; i < files.Count; i++)
             {
                 var file = files[i];
@@ -158,6 +173,11 @@ namespace UI
 
                 // upload
                 stream.Seek(0, SeekOrigin.Begin);
+                file.Parents = file.Parents?.Where(parent => parent != rootId).ToArray() ?? new string[] { };
+                if (file.Parents.Count == 0)
+                {
+                    file.Parents = null;
+                }
                 newOwnerGoogleService.UploadFile(file, stream);
 
                 // delete

@@ -37,6 +37,6 @@ namespace UI
 
         void UploadFile(FileDTO file, Stream stream);
 
-        void RecoverParents(FileDTO file);
+        void RecoverParents(IReadOnlyList<FileDTO> dirs);
     }
 }
