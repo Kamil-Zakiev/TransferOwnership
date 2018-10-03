@@ -22,9 +22,28 @@ namespace UI
         public IReadOnlyList<FileDTO> GetOwnedFiles()
         {
             var listRequest = _driveService.Files.List();
+            listRequest.Fields = "nextPageToken,files(owners,ownedByMe,name,id,mimeType,parents,explicitlyTrashed)";
+            var pageSize = 100;
+            listRequest.PageSize = pageSize;
 
-            listRequest.Fields = "files(owners,ownedByMe,name,id,mimeType,parents,explicitlyTrashed)";
-            var files = listRequest.Execute().Files;
+            var files = new List<Google.Apis.Drive.v3.Data.File>();
+
+            do
+            {
+                var listResult = listRequest.Execute();
+                var filesChunk = listResult.Files;
+                listRequest.PageToken = listResult.NextPageToken;
+                if (filesChunk == null || filesChunk.Count == 0)
+                {
+                    break;
+                }
+
+                files.AddRange(filesChunk);
+                if (filesChunk.Count < pageSize)
+                {
+                    break;
+                }
+            } while (true);
 
             var currentUser = GetUserInfo();
 
