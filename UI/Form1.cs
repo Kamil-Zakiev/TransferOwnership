@@ -55,7 +55,7 @@ namespace UI
         {
             var onServiceCreatedTask = Task.Run(() =>
             {
-                files = OldOwnerGoogleService.GetOwnedFiles();
+                files = OldOwnerGoogleService.GetOwnedFiles().OrderBy(file => file.MimeType).ThenBy(file => file.Name).ToArray();
                 var userInfo = OldOwnerGoogleService.GetUserInfo();
                 return userInfo;
             });
@@ -68,10 +68,11 @@ namespace UI
 
                 textBox1.Text = "";
                 var sb = new StringBuilder();
-                sb.AppendLine($"Мои файлы ({files.Count} шт.): ");
+                sb.AppendLine($"Мои файлы и папки ({files.Count} шт.): ");
                 foreach (var file in files)
                 {
-                    sb.AppendLine($"{file.Name}");
+                    var prefix = file.MimeType == "application/vnd.google-apps.folder" ? "[Папка]: " : string.Empty;
+                    sb.AppendLine($"{prefix}{file.Name}");
                 }
 
                 textBox1.Text = sb.ToString();

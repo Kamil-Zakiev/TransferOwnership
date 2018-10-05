@@ -16,9 +16,26 @@ namespace UI
     {
         private DriveService _driveService;
 
+        // see https://support.google.com/drive/answer/2494892
+        private readonly IReadOnlyList<string> _googleAppTypes = new[] {
+            "application/vnd.google-apps.document",
+            "application/vnd.google-apps.spreadsheet",
+            "application/vnd.google-apps.presentation",
+            "application/vnd.google-apps.form",
+            "application/vnd.google-apps.folder",
+            "application/vnd.google-apps.map",
+            "application/vnd.google-apps.site",
+            "application/vnd.google-apps.drawing"
+        };
+
         public GoogleService(DriveService driveService)
         {
             _driveService = driveService ?? throw new ArgumentNullException(nameof(driveService));
+        }
+
+        private void Timeout()
+        {
+            Thread.Sleep(5000);
         }
 
         public IReadOnlyList<FileDTO> GetOwnedFiles()
@@ -46,7 +63,7 @@ namespace UI
                     break;
                 }
 
-                Thread.Sleep(500);
+                Timeout();
             } while (true);
 
             var currentUser = GetUserInfo();
@@ -65,15 +82,21 @@ namespace UI
                 .ToArray();
         }
 
+        private UserInfo _userInfo;
         public UserInfo GetUserInfo()
         {
-            //todo: put defaultUserUrl to config
+            if (_userInfo != null)
+            {
+                return _userInfo;
+            }
+
             const string defaultUserUrl = "https://icon-icons.com/icons2/1378/PNG/512/avatardefault_92824.png";
             var aboutGet = _driveService.About.Get();
             aboutGet.Fields = "user";
 
             var user = aboutGet.Execute().User;
-            return new UserInfo
+            Timeout();
+            return _userInfo = new UserInfo
             {
                 EmailAddress = user.EmailAddress,
                 Name = user.DisplayName,
@@ -101,17 +124,25 @@ namespace UI
             }
 
             batch.ExecuteAsync().Wait();
+            Timeout();
         }
 
         public IReadOnlyList<TransferingResult> TransferOwnershipTo(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<int, FileDTO> callback)
         {
             var newOwner = newOwnerGoogleService.GetUserInfo();
 
-            var dirs = files.Where(f => f.MimeType == "application/vnd.google-apps.folder").ToArray();
+            var result = files
+                .Where(file => !_googleAppTypes.Contains(file.MimeType))
+                .Select(file => new TransferingResult
+                {
+                    Exception = new Exception("Not a google app. See https://support.google.com/drive/answer/2494892 section 'Files you can transfer'"),
+                    File = file
+                })
+                .ToList();
 
-            files = dirs.Concat(files.Except(dirs)).ToArray();
+            var googleFiles = files.Where(file => _googleAppTypes.Contains(file.MimeType)).ToArray();
 
-            var commandsDto = files
+            var commandsDto = googleFiles
                 .Select(file =>
                 {
                     var command = _driveService.Permissions.Create(new Google.Apis.Drive.v3.Data.Permission
@@ -122,66 +153,57 @@ namespace UI
                     }, file.Id);
 
                     command.TransferOwnership = true;
-
-                    // google does not allow to skip notification
-                    // command.SendNotificationEmail = false;
-
                     return new { command, file };
                 })
                 .ToArray();
 
             var batch = new BatchRequest(_driveService);
-            var result = new List<TransferingResult>();
             BatchRequest.OnResponse<Google.Apis.Drive.v3.Data.Permission> batchCallback = delegate (
                 Google.Apis.Drive.v3.Data.Permission permission,
                 RequestError error,
                 int index,
                 System.Net.Http.HttpResponseMessage message)
             {
-                if (error != null)
+                result.Add(new TransferingResult
                 {
-                    // Handle error
-                    result.Add(new TransferingResult
-                    {
-                        Exception = new Exception(error.Message),
-                        File = files[index]
-                    });
-                }
-                else
-                {
-                    result.Add(new TransferingResult
-                    {
-                        File = files[index]
-                    });
-                    callback(index, files[index]);
-                }
+                    File = googleFiles[index]
+                });
+                callback(index, googleFiles[index]);
             };
 
             foreach (var commandDto in commandsDto)
             {
                 batch.Queue(commandDto.command, batchCallback);
-
             }
             batch.ExecuteAsync().Wait();
+            Timeout();
 
             // removing edit permissions
-            var filesToDeletePermission = result.Where(r => r.Success).Select(r => r.File).ToArray();
-            newOwnerGoogleService.DeleteOwnershipPermission(filesToDeletePermission);
+            newOwnerGoogleService.DeleteOwnershipPermission(googleFiles);
 
             // correct dirs chain
-            newOwnerGoogleService.RecoverParents(dirs);
+            newOwnerGoogleService.RecoverParents(files);
 
             return result;
         }
 
+        private string _rootId;
         private string GetRootFolderId()
         {
+            if (_rootId != null)
+            {
+                return _rootId;
+            }
+
             var rootgetCommand = _driveService.Files.Get("root");
             rootgetCommand.Fields = "id";
-            return rootgetCommand.Execute().Id;
+            _rootId = rootgetCommand.Execute().Id;
+
+            Timeout();
+            return _rootId;
         }
 
-        public void RecoverParents(IReadOnlyList<FileDTO> dirs)
+        public void RecoverParents(IReadOnlyList<FileDTO> files)
         {
             var rootId = GetRootFolderId();
             var batch = new BatchRequest(_driveService);
@@ -196,11 +218,12 @@ namespace UI
 
             var listRequest = _driveService.Files.List();
             listRequest.Fields = "files(id,parents)";
-            var dirsData = listRequest.Execute().Files
-                .Where(f => dirs.Any(dir => dir.Id == f.Id))
+            var filesData = listRequest.Execute().Files
+                .Where(f => files.Any(dir => dir.Id == f.Id))
                 .ToArray();
+            Timeout();
 
-            foreach (var originFile in dirsData)
+            foreach (var originFile in filesData)
             {
                 if (originFile.Parents == null || originFile.Parents.Count == 1 || !originFile.Parents.Contains(rootId))
                 {
@@ -213,6 +236,7 @@ namespace UI
             }
 
             batch.ExecuteAsync().Wait();
+            Timeout();
         }
 
         public void ReloadFromNewUser(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<int, FileDTO> callback)
@@ -227,6 +251,7 @@ namespace UI
                 
                 // download
                 request.Download(stream);
+                Timeout();
 
                 // upload
                 stream.Seek(0, SeekOrigin.Begin);
@@ -237,11 +262,26 @@ namespace UI
                 }
                 newOwnerGoogleService.UploadFile(file, stream);
 
-                // delete
-                _driveService.Files.Delete(file.Id).Execute();
-
                 callback(i, file);
             }
+
+            // delete
+            BatchRequest.OnResponse<object> batchCallback = delegate (
+                object permission,
+                RequestError error,
+                int index,
+                System.Net.Http.HttpResponseMessage message)
+            {
+            };
+            var batch = new BatchRequest(_driveService);
+            foreach (var file in files)
+            {
+                var deleteCommand = _driveService.Files.Delete(file.Id);
+                batch.Queue(deleteCommand, batchCallback);
+            }
+
+            batch.ExecuteAsync().Wait();
+            Timeout();
         }
 
         public void UploadFile(FileDTO file, Stream stream)
@@ -253,6 +293,7 @@ namespace UI
                 }, stream, file.MimeType);
             a.Fields = "id";
             a.Upload();
+            Timeout();
 
             var needsToBeTrashed = file.ExplicitlyTrashed.HasValue && file.ExplicitlyTrashed.Value;
             if (!needsToBeTrashed)
@@ -268,6 +309,7 @@ namespace UI
                     Trashed = true
                 }, loadedFileId);
             updateCommand.Execute();
+            Timeout();
         }
     }
 }
