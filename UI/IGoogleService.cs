@@ -31,7 +31,7 @@ namespace UI
         /// <summary>
         /// Delete permission to disable view and edit a file
         /// </summary>
-        void DeleteOwnershipPermission(FileDTO file);
+        void DeleteOwnershipPermission(IReadOnlyList<FileDTO> files);
 
         void ReloadFromNewUser(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<int, FileDTO> callback);
 

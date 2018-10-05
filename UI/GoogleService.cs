@@ -1,9 +1,11 @@
 ﻿using Google.Apis.Drive.v3;
+using Google.Apis.Requests;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Threading;
 
 namespace UI
 {
@@ -43,6 +45,8 @@ namespace UI
                 {
                     break;
                 }
+
+                Thread.Sleep(500);
             } while (true);
 
             var currentUser = GetUserInfo();
@@ -77,17 +81,31 @@ namespace UI
             };
         }
 
-        public void DeleteOwnershipPermission(FileDTO file)
+        public void DeleteOwnershipPermission(IReadOnlyList<FileDTO> files)
         {
-            var deleteCommand = _driveService.Permissions.Delete(file.Id, file.OwnershipPermissionId);
-            deleteCommand.Execute();
+            var batch = new BatchRequest(_driveService);
+
+            BatchRequest.OnResponse<Google.Apis.Drive.v3.Data.Permission> batchCallback = delegate (
+                Google.Apis.Drive.v3.Data.Permission permission,
+                RequestError error,
+                int index,
+                System.Net.Http.HttpResponseMessage message)
+            {
+                
+            };
+
+            foreach(var file in files)
+            {
+                var deleteCommand = _driveService.Permissions.Delete(file.Id, file.OwnershipPermissionId);
+                batch.Queue(deleteCommand, batchCallback);
+            }
+
+            batch.ExecuteAsync().Wait();
         }
 
         public IReadOnlyList<TransferingResult> TransferOwnershipTo(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<int, FileDTO> callback)
         {
             var newOwner = newOwnerGoogleService.GetUserInfo();
-
-            //var mentionedParents = files.SelectMany(f => f.Parents).ToArray();
 
             var dirs = files.Where(f => f.MimeType == "application/vnd.google-apps.folder").ToArray();
 
@@ -112,37 +130,43 @@ namespace UI
                 })
                 .ToArray();
 
+            var batch = new BatchRequest(_driveService);
             var result = new List<TransferingResult>();
-            for (int i = 0; i < commandsDto.Length; i++)
+            BatchRequest.OnResponse<Google.Apis.Drive.v3.Data.Permission> batchCallback = delegate (
+                Google.Apis.Drive.v3.Data.Permission permission,
+                RequestError error,
+                int index,
+                System.Net.Http.HttpResponseMessage message)
             {
-                var commandDto = commandsDto[i];
-                // introducing new owner of a file
-                var command = commandDto.command;
-
-                try
+                if (error != null)
                 {
-                    command.Execute();
-                    callback(i, commandDto.file);
+                    // Handle error
+                    result.Add(new TransferingResult
+                    {
+                        Exception = new Exception(error.Message),
+                        File = files[index]
+                    });
                 }
-                catch (Exception e)
+                else
                 {
                     result.Add(new TransferingResult
                     {
-                        Exception = e,
-                        File = commandDto.file
+                        File = files[index]
                     });
-                    continue;
+                    callback(index, files[index]);
                 }
+            };
 
-                // removing view and edit permissions of an old owner from new user authority
-                var file = commandDto.file;
-                newOwnerGoogleService.DeleteOwnershipPermission(file);
+            foreach (var commandDto in commandsDto)
+            {
+                batch.Queue(commandDto.command, batchCallback);
 
-                result.Add(new TransferingResult
-                {
-                    File = commandDto.file
-                });
             }
+            batch.ExecuteAsync().Wait();
+
+            // removing edit permissions
+            var filesToDeletePermission = result.Where(r => r.Success).Select(r => r.File).ToArray();
+            newOwnerGoogleService.DeleteOwnershipPermission(filesToDeletePermission);
 
             // correct dirs chain
             newOwnerGoogleService.RecoverParents(dirs);
@@ -160,13 +184,24 @@ namespace UI
         public void RecoverParents(IReadOnlyList<FileDTO> dirs)
         {
             var rootId = GetRootFolderId();
-
-            foreach (var dir in dirs)
+            var batch = new BatchRequest(_driveService);
+            BatchRequest.OnResponse<object> batchCallback = delegate (
+                object permission,
+                RequestError error,
+                int index,
+                System.Net.Http.HttpResponseMessage message)
             {
-                var getCommand = _driveService.Files.Get(dir.Id);
-                getCommand.Fields = "id,parents";
-                var originFile = getCommand.Execute();
 
+            };
+
+            var listRequest = _driveService.Files.List();
+            listRequest.Fields = "files(id,parents)";
+            var dirsData = listRequest.Execute().Files
+                .Where(f => dirs.Any(dir => dir.Id == f.Id))
+                .ToArray();
+
+            foreach (var originFile in dirsData)
+            {
                 if (originFile.Parents == null || originFile.Parents.Count == 1 || !originFile.Parents.Contains(rootId))
                 {
                     continue;
@@ -174,8 +209,10 @@ namespace UI
 
                 var updateCommand = _driveService.Files.Update(new Google.Apis.Drive.v3.Data.File { }, originFile.Id);
                 updateCommand.RemoveParents = rootId;
-                updateCommand.Execute();
-            }            
+                batch.Queue(updateCommand, batchCallback);
+            }
+
+            batch.ExecuteAsync().Wait();
         }
 
         public void ReloadFromNewUser(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<int, FileDTO> callback)
