@@ -45,10 +45,9 @@ namespace UI
                     ApplicationName = ApplicationName,
                 });
                 OldOwnerGoogleService = new GoogleService(service);
-            });
+            }, TaskContinuationOptions.OnlyOnRanToCompletion);
 
-            // need to continue only when service is initialized
-            serviceCreationTask.ContinueWith(t => UpdateFileList(), TaskScheduler.FromCurrentSynchronizationContext());
+            serviceCreationTask.ContinueWith(t => UpdateFileList(), CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.FromCurrentSynchronizationContext());
         }
 
         private void UpdateFileList()
@@ -76,7 +75,7 @@ namespace UI
                 }
 
                 textBox1.Text = sb.ToString();
-            }, TaskScheduler.FromCurrentSynchronizationContext());
+            }, CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.FromCurrentSynchronizationContext());
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -94,7 +93,7 @@ namespace UI
                 var userInfo = NewOwnerGoogleService.GetUserInfo();
                 label1.Text = userInfo.Name + " (" + userInfo.EmailAddress + ")";
                 pictureBox2.Load(userInfo.PhotoLink.AbsoluteUri);
-            }, TaskScheduler.FromCurrentSynchronizationContext());
+            }, CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.FromCurrentSynchronizationContext());
         }
 
         private void AddPermToTest_Click(object sender, EventArgs e)
@@ -105,7 +104,7 @@ namespace UI
 
             var syncContextScheduler = TaskScheduler.FromCurrentSynchronizationContext();
 
-            var transferTask = new Task<IReadOnlyList<TransferingResult>>(() => OldOwnerGoogleService.TransferOwnershipTo(files, NewOwnerGoogleService, (i, file) =>
+            var transferTask = new Task(() => OldOwnerGoogleService.RejectRights(files, NewOwnerGoogleService, file =>
             {
                 var task = new Task(() => progressBar1.Increment(1));
                 task.Start(syncContextScheduler);
@@ -113,47 +112,50 @@ namespace UI
 
             transferTask.ContinueWith(t =>
             {
-                var result = t.Result;
-                var loadedFiles = result.Where(r => !r.Success).Select(r => r.File).ToArray();
+                UpdateFileList();
+                MessageBox.Show(null,
+                       "Перенос завершен",
+                       "Сообщение",
+                       MessageBoxButtons.OK,
+                       MessageBoxIcon.Information);
 
-                if (!loadedFiles.Any())
-                {
-                    MessageBox.Show(null,
-                           "Перенос завершен",
-                           "Сообщение",
-                           MessageBoxButtons.OK,
-                           MessageBoxIcon.Information);
+                UpdateFileList();
+                progressBar1.Visible = false;
+            }, CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, syncContextScheduler);
 
-                    UpdateFileList();
-                    progressBar1.Visible = false;
+            transferTask.ContinueWith(t =>
+            {
+                var messages = new List<string>();
+                FillExceptionMessages(messages, t.Exception);
+                var message = string.Join(Environment.NewLine, messages.Distinct());
+                MessageBox.Show(null, message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
-                    return;
-                }
-
-                var reloadTask = Task.Run(() =>
-                {
-                    OldOwnerGoogleService.ReloadFromNewUser(loadedFiles, NewOwnerGoogleService, (i, file) =>
-                    {
-                        var task = new Task(() => progressBar1.Increment(1));
-                        task.Start(syncContextScheduler);
-                    });
-                });
-
-                reloadTask.ContinueWith(tsk =>
-                {
-                    MessageBox.Show(null,
-                          "Перенос завершен",
-                          "Сообщение",
-                          MessageBoxButtons.OK,
-                          MessageBoxIcon.Information);
-                    UpdateFileList();
-
-                    progressBar1.Visible = false;
-                }, syncContextScheduler);
-
-            }, syncContextScheduler);
+                UpdateFileList();
+                progressBar1.Visible = false;
+            }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, syncContextScheduler);
 
             transferTask.Start();
+        }
+
+        private void FillExceptionMessages(List<string> messages, Exception exception)
+        {
+            if (!string.IsNullOrWhiteSpace(exception.Message))
+            {
+                messages.Add(exception.Message);
+            }
+
+            if (exception.InnerException != null)
+            {
+                FillExceptionMessages(messages, exception.InnerException);
+            }
+
+            if (exception is AggregateException aggregateException && aggregateException.InnerExceptions != null)
+            {
+                foreach (var ex in aggregateException.InnerExceptions)
+                {
+                    FillExceptionMessages(messages, ex);
+                }
+            }
         }
 
         private void button2_Click(object sender, EventArgs e)
