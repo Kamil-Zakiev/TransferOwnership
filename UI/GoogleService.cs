@@ -166,9 +166,11 @@ namespace UI
             batch.ExecuteAsync().Wait();
 
             // removing edit permissions
+            Thread.Sleep(2000);
             newOwnerGoogleService.DeleteOwnershipPermission(googleFiles);
 
             // correct dirs chain
+            Thread.Sleep(2000);
             newOwnerGoogleService.RecoverParents(googleFiles);
         }
 
