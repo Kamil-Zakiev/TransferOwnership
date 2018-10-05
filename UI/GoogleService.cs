@@ -1,9 +1,10 @@
 ﻿using Google.Apis.Drive.v3;
+using Google.Apis.Requests;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
+using System.Threading;
 
 namespace UI
 {
@@ -14,9 +15,26 @@ namespace UI
     {
         private DriveService _driveService;
 
+        // see https://support.google.com/drive/answer/2494892
+        private readonly IReadOnlyList<string> _googleAppTypes = new[] {
+            "application/vnd.google-apps.document",
+            "application/vnd.google-apps.spreadsheet",
+            "application/vnd.google-apps.presentation",
+            "application/vnd.google-apps.form",
+            "application/vnd.google-apps.folder",
+            "application/vnd.google-apps.map",
+            "application/vnd.google-apps.site",
+            "application/vnd.google-apps.drawing"
+        };
+
         public GoogleService(DriveService driveService)
         {
             _driveService = driveService ?? throw new ArgumentNullException(nameof(driveService));
+        }
+
+        private void Timeout(int seconds = 5)
+        {
+            Thread.Sleep(200);
         }
 
         public IReadOnlyList<FileDTO> GetOwnedFiles()
@@ -43,6 +61,8 @@ namespace UI
                 {
                     break;
                 }
+
+                Timeout(1);
             } while (true);
 
             var currentUser = GetUserInfo();
@@ -61,15 +81,20 @@ namespace UI
                 .ToArray();
         }
 
+        private UserInfo _userInfo;
         public UserInfo GetUserInfo()
         {
-            //todo: put defaultUserUrl to config
+            if (_userInfo != null)
+            {
+                return _userInfo;
+            }
+
             const string defaultUserUrl = "https://icon-icons.com/icons2/1378/PNG/512/avatardefault_92824.png";
             var aboutGet = _driveService.About.Get();
             aboutGet.Fields = "user";
 
             var user = aboutGet.Execute().User;
-            return new UserInfo
+            return _userInfo = new UserInfo
             {
                 EmailAddress = user.EmailAddress,
                 Name = user.DisplayName,
@@ -77,23 +102,34 @@ namespace UI
             };
         }
 
-        public void DeleteOwnershipPermission(FileDTO file)
+        public void DeleteOwnershipPermission(IReadOnlyList<FileDTO> files)
         {
-            var deleteCommand = _driveService.Permissions.Delete(file.Id, file.OwnershipPermissionId);
-            deleteCommand.Execute();
+            var batch = new BatchRequest(_driveService);
+
+            foreach(var file in files)
+            {
+                var deleteCommand = _driveService.Permissions.Delete(file.Id, file.OwnershipPermissionId);
+                batch.Queue<object>(deleteCommand, EmbtyBatchCallback);
+            }
+
+            batch.ExecuteAsync().Wait();
+            Timeout();
         }
 
-        public IReadOnlyList<TransferingResult> TransferOwnershipTo(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<int, FileDTO> callback)
+        public void RejectRights(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<FileDTO> callback)
+        {
+            var googleFiles = files.Where(file => _googleAppTypes.Contains(file.MimeType)).ToArray();
+            TransferOwnershipTo(googleFiles, newOwnerGoogleService, callback);
+
+            var loadedFiles = files.Except(googleFiles).ToArray();
+            ReloadFromNewUser(loadedFiles, newOwnerGoogleService, callback);
+        }
+
+        private void TransferOwnershipTo(IReadOnlyList<FileDTO> googleFiles, IGoogleService newOwnerGoogleService, Action<FileDTO> callback)
         {
             var newOwner = newOwnerGoogleService.GetUserInfo();
 
-            //var mentionedParents = files.SelectMany(f => f.Parents).ToArray();
-
-            var dirs = files.Where(f => f.MimeType == "application/vnd.google-apps.folder").ToArray();
-
-            files = dirs.Concat(files.Except(dirs)).ToArray();
-
-            var commandsDto = files
+            var commandsDto = googleFiles
                 .Select(file =>
                 {
                     var command = _driveService.Permissions.Create(new Google.Apis.Drive.v3.Data.Permission
@@ -104,69 +140,70 @@ namespace UI
                     }, file.Id);
 
                     command.TransferOwnership = true;
-
-                    // google does not allow to skip notification
-                    // command.SendNotificationEmail = false;
-
                     return new { command, file };
                 })
                 .ToArray();
 
-            var result = new List<TransferingResult>();
-            for (int i = 0; i < commandsDto.Length; i++)
+            BatchRequest.OnResponse<Google.Apis.Drive.v3.Data.Permission> batchCallback = delegate (
+                Google.Apis.Drive.v3.Data.Permission permission,
+                RequestError error,
+                int index,
+                System.Net.Http.HttpResponseMessage message)
             {
-                var commandDto = commandsDto[i];
-                // introducing new owner of a file
-                var command = commandDto.command;
-
-                try
+                if (!string.IsNullOrWhiteSpace(error?.Message))
                 {
-                    command.Execute();
-                    callback(i, commandDto.file);
-                }
-                catch (Exception e)
-                {
-                    result.Add(new TransferingResult
-                    {
-                        Exception = e,
-                        File = commandDto.file
-                    });
-                    continue;
+                    throw new InvalidOperationException(error.Message);
                 }
 
-                // removing view and edit permissions of an old owner from new user authority
-                var file = commandDto.file;
-                newOwnerGoogleService.DeleteOwnershipPermission(file);
+                callback(googleFiles[index]);
+            };
 
-                result.Add(new TransferingResult
-                {
-                    File = commandDto.file
-                });
+            var batch = new BatchRequest(_driveService);
+            foreach (var commandDto in commandsDto)
+            {
+                batch.Queue(commandDto.command, batchCallback);
             }
+            batch.ExecuteAsync().Wait();
+
+            // removing edit permissions
+            Thread.Sleep(2000);
+            newOwnerGoogleService.DeleteOwnershipPermission(googleFiles);
 
             // correct dirs chain
-            newOwnerGoogleService.RecoverParents(dirs);
-
-            return result;
+            Thread.Sleep(2000);
+            newOwnerGoogleService.RecoverParents(googleFiles);
         }
 
+        private string _rootId;
         private string GetRootFolderId()
         {
+            if (_rootId != null)
+            {
+                return _rootId;
+            }
+
             var rootgetCommand = _driveService.Files.Get("root");
             rootgetCommand.Fields = "id";
-            return rootgetCommand.Execute().Id;
+            _rootId = rootgetCommand.Execute().Id;
+
+            Timeout();
+            return _rootId;
         }
 
-        public void RecoverParents(IReadOnlyList<FileDTO> dirs)
+        public void RecoverParents(IReadOnlyList<FileDTO> files)
         {
             var rootId = GetRootFolderId();
+            var batch = new BatchRequest(_driveService);
 
-            foreach (var dir in dirs)
+            var listRequest = _driveService.Files.List();
+            listRequest.Fields = "files(id,parents)";
+            var filesData = listRequest.Execute().Files
+                .Where(f => files.Any(dir => dir.Id == f.Id))
+                .ToArray();
+            Timeout();
+
+            foreach (var originFile in filesData)
             {
-                var getCommand = _driveService.Files.Get(dir.Id);
-                getCommand.Fields = "id,parents";
-                var originFile = getCommand.Execute();
-
                 if (originFile.Parents == null || originFile.Parents.Count == 1 || !originFile.Parents.Contains(rootId))
                 {
                     continue;
@@ -174,14 +211,18 @@ namespace UI
 
                 var updateCommand = _driveService.Files.Update(new Google.Apis.Drive.v3.Data.File { }, originFile.Id);
                 updateCommand.RemoveParents = rootId;
-                updateCommand.Execute();
-            }            
+                batch.Queue<object>(updateCommand, EmbtyBatchCallback);
+            }
+
+            batch.ExecuteAsync().Wait();
+            Timeout();
         }
 
-        public void ReloadFromNewUser(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<int, FileDTO> callback)
+        private void ReloadFromNewUser(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<FileDTO> callback)
         {
             var rootId = GetRootFolderId();
 
+            var filesToBeTrashed = new List<string>();
             for (int i = 0; i < files.Count; i++)
             {
                 var file = files[i];
@@ -190,6 +231,7 @@ namespace UI
                 
                 // download
                 request.Download(stream);
+                Timeout();
 
                 // upload
                 stream.Seek(0, SeekOrigin.Begin);
@@ -198,39 +240,70 @@ namespace UI
                 {
                     file.Parents = null;
                 }
-                newOwnerGoogleService.UploadFile(file, stream);
 
-                // delete
-                _driveService.Files.Delete(file.Id).Execute();
+                var loadedFileId = newOwnerGoogleService.UploadFile(file, stream);
+                if (file.ExplicitlyTrashed.HasValue && file.ExplicitlyTrashed.Value)
+                {
+                    filesToBeTrashed.Add(loadedFileId);
+                }
 
-                callback(i, file);
+                callback(file);
+            }
+
+            // delete
+            var batch = new BatchRequest(_driveService);
+            foreach (var file in files)
+            {
+                var deleteCommand = _driveService.Files.Delete(file.Id);
+                batch.Queue<object>(deleteCommand, EmbtyBatchCallback);
+            }
+
+            batch.ExecuteAsync().Wait();
+            Timeout();
+
+            newOwnerGoogleService.TrashFiles(filesToBeTrashed);
+        }
+
+        private void EmbtyBatchCallback(
+                object permission,
+                RequestError error,
+                int index,
+                System.Net.Http.HttpResponseMessage message)
+        {
+            if (!string.IsNullOrWhiteSpace(error?.Message))
+            {
+                throw new InvalidOperationException(error.Message);
             }
         }
 
-        public void UploadFile(FileDTO file, Stream stream)
+        public void TrashFiles(IReadOnlyList<string> filesIdsToTrash)
         {
-            var a = _driveService.Files.Create(new Google.Apis.Drive.v3.Data.File
+            var batch = new BatchRequest(_driveService);
+            foreach (var fileId in filesIdsToTrash)
+            {
+                var updateCommand = _driveService.Files.Update(new Google.Apis.Drive.v3.Data.File
+                {
+                    Trashed = true
+                }, fileId);
+                batch.Queue<object>(updateCommand, EmbtyBatchCallback);
+            }
+
+            batch.ExecuteAsync().Wait();
+            Timeout();
+        }
+
+        public string UploadFile(FileDTO file, Stream stream)
+        {
+            var createFileCommand = _driveService.Files.Create(new Google.Apis.Drive.v3.Data.File
                 {
                     Name = file.Name,
                     Parents = file.Parents
                 }, stream, file.MimeType);
-            a.Fields = "id";
-            a.Upload();
+            createFileCommand.Fields = "id";
+            createFileCommand.Upload();
+            Timeout();
 
-            var needsToBeTrashed = file.ExplicitlyTrashed.HasValue && file.ExplicitlyTrashed.Value;
-            if (!needsToBeTrashed)
-            {
-                return;
-            }
-
-            // only re-uploaded files needs to be explicitly trashed
-            var loadedFileId = a.ResponseBody.Id;
-
-            var updateCommand = _driveService.Files.Update(new Google.Apis.Drive.v3.Data.File
-                {
-                    Trashed = true
-                }, loadedFileId);
-            updateCommand.Execute();
+            return createFileCommand.ResponseBody.Id;
         }
     }
 }

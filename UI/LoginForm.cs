@@ -20,6 +20,7 @@ namespace UI
         {
             InitializeComponent();
 
+            webBrowser1.ScriptErrorsSuppressed = true;
 
             // Set the browser to the initial uri.
             webBrowser1.Navigate(authUri);

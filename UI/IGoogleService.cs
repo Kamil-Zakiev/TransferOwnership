@@ -24,19 +24,16 @@ namespace UI
         IReadOnlyList<FileDTO> GetOwnedFiles();
 
         /// <summary>
-        /// Transfer ownership to newUser
-        /// </summary>
-        IReadOnlyList<TransferingResult> TransferOwnershipTo(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<int, FileDTO> callback);
-
-        /// <summary>
         /// Delete permission to disable view and edit a file
         /// </summary>
-        void DeleteOwnershipPermission(FileDTO file);
+        void DeleteOwnershipPermission(IReadOnlyList<FileDTO> files);
 
-        void ReloadFromNewUser(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<int, FileDTO> callback);
-
-        void UploadFile(FileDTO file, Stream stream);
+        string UploadFile(FileDTO file, Stream stream);
 
         void RecoverParents(IReadOnlyList<FileDTO> dirs);
+
+        void TrashFiles(IReadOnlyList<string> filesIdsToTrash);
+
+        void RejectRights(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<FileDTO> callback);
     }
 }
