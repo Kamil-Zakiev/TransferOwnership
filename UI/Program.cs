@@ -22,7 +22,8 @@ namespace UI
             var configFilePath = ConfigurationManager.AppSettings["GoogleAppConfigFile"];
             var oldAuthService = new GoogleAuthorizeService(configFilePath, new[] { DriveService.Scope.Drive }, "token.json");
             var newAuthService = new GoogleAuthorizeService(configFilePath, new[] { DriveService.Scope.Drive }, "token2.json");
-            Application.Run(new Form1(oldAuthService, newAuthService));
+            var expBackoffPolicy = new ExpBackoffPolicy();
+            Application.Run(new Form1(oldAuthService, newAuthService, expBackoffPolicy));
         }
     }
 }

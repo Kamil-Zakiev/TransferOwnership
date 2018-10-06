@@ -27,9 +27,12 @@ namespace UI
             "application/vnd.google-apps.drawing"
         };
 
-        public GoogleService(DriveService driveService)
+        private readonly IExpBackoffPolicy _expBackoffPolicy;
+
+        public GoogleService(DriveService driveService, IExpBackoffPolicy expBackoffPolicy)
         {
             _driveService = driveService ?? throw new ArgumentNullException(nameof(driveService));
+            _expBackoffPolicy = expBackoffPolicy ?? throw new ArgumentNullException(nameof(expBackoffPolicy));
         }
 
         private void Timeout(int seconds = 5)
@@ -57,7 +60,7 @@ namespace UI
                 }
 
                 files.AddRange(filesChunk);
-                if (filesChunk.Count < pageSize)
+                if (filesChunk.Count < pageSize || listRequest.PageToken == null)
                 {
                     break;
                 }
@@ -94,26 +97,23 @@ namespace UI
             aboutGet.Fields = "user";
 
             var user = aboutGet.Execute().User;
+
+            var rootgetCommand = _driveService.Files.Get("root");
+            rootgetCommand.Fields = "id";
+            var rootId = rootgetCommand.Execute().Id;
+
             return _userInfo = new UserInfo
             {
                 EmailAddress = user.EmailAddress,
                 Name = user.DisplayName,
-                PhotoLink = user.PhotoLink != null ? new Uri(user.PhotoLink) : new Uri(defaultUserUrl)
+                PhotoLink = user.PhotoLink != null ? new Uri(user.PhotoLink) : new Uri(defaultUserUrl),
+                RootFolderId = rootId
             };
         }
 
         public void DeleteOwnershipPermission(IReadOnlyList<FileDTO> files)
         {
-            var batch = new BatchRequest(_driveService);
-
-            foreach(var file in files)
-            {
-                var deleteCommand = _driveService.Permissions.Delete(file.Id, file.OwnershipPermissionId);
-                batch.Queue<object>(deleteCommand, EmbtyBatchCallback);
-            }
-
-            batch.ExecuteAsync().Wait();
-            Timeout();
+            WrapBatchOperation(files, file => _driveService.Permissions.Delete(file.Id, file.OwnershipPermissionId));
         }
 
         public void RejectRights(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<FileDTO> callback)
@@ -144,26 +144,7 @@ namespace UI
                 })
                 .ToArray();
 
-            BatchRequest.OnResponse<Google.Apis.Drive.v3.Data.Permission> batchCallback = delegate (
-                Google.Apis.Drive.v3.Data.Permission permission,
-                RequestError error,
-                int index,
-                System.Net.Http.HttpResponseMessage message)
-            {
-                if (!string.IsNullOrWhiteSpace(error?.Message))
-                {
-                    throw new InvalidOperationException(error.Message);
-                }
-
-                callback(googleFiles[index]);
-            };
-
-            var batch = new BatchRequest(_driveService);
-            foreach (var commandDto in commandsDto)
-            {
-                batch.Queue(commandDto.command, batchCallback);
-            }
-            batch.ExecuteAsync().Wait();
+            WrapBatchOperation(commandsDto, commandDto => commandDto.command, (index) => callback(googleFiles[index]));
 
             // removing edit permissions
             Thread.Sleep(2000);
@@ -173,27 +154,10 @@ namespace UI
             Thread.Sleep(2000);
             newOwnerGoogleService.RecoverParents(googleFiles);
         }
-
-        private string _rootId;
-        private string GetRootFolderId()
-        {
-            if (_rootId != null)
-            {
-                return _rootId;
-            }
-
-            var rootgetCommand = _driveService.Files.Get("root");
-            rootgetCommand.Fields = "id";
-            _rootId = rootgetCommand.Execute().Id;
-
-            Timeout();
-            return _rootId;
-        }
-
+        
         public void RecoverParents(IReadOnlyList<FileDTO> files)
         {
-            var rootId = GetRootFolderId();
-            var batch = new BatchRequest(_driveService);
+            var rootId = GetUserInfo().RootFolderId;
 
             var listRequest = _driveService.Files.List();
             listRequest.Fields = "files(id,parents)";
@@ -202,25 +166,22 @@ namespace UI
                 .ToArray();
             Timeout();
 
-            foreach (var originFile in filesData)
+            WrapBatchOperation(filesData, fileData => 
             {
-                if (originFile.Parents == null || originFile.Parents.Count == 1 || !originFile.Parents.Contains(rootId))
+                if (fileData.Parents == null || fileData.Parents.Count == 1 || !fileData.Parents.Contains(rootId))
                 {
-                    continue;
+                    return null;
                 }
 
-                var updateCommand = _driveService.Files.Update(new Google.Apis.Drive.v3.Data.File { }, originFile.Id);
+                var updateCommand = _driveService.Files.Update(new Google.Apis.Drive.v3.Data.File { }, fileData.Id);
                 updateCommand.RemoveParents = rootId;
-                batch.Queue<object>(updateCommand, EmbtyBatchCallback);
-            }
-
-            batch.ExecuteAsync().Wait();
-            Timeout();
+                return updateCommand;
+            });
         }
 
         private void ReloadFromNewUser(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<FileDTO> callback)
         {
-            var rootId = GetRootFolderId();
+            var rootId = GetUserInfo().RootFolderId;
 
             var filesToBeTrashed = new List<string>();
             for (int i = 0; i < files.Count; i++)
@@ -228,9 +189,10 @@ namespace UI
                 var file = files[i];
                 var request = _driveService.Files.Get(file.Id);
                 var stream = new MemoryStream();
-                
+
                 // download
-                request.Download(stream);
+                _expBackoffPolicy.GrantedDelivery(() => request.Download(stream));
+
                 Timeout();
 
                 // upload
@@ -241,27 +203,80 @@ namespace UI
                     file.Parents = null;
                 }
 
-                var loadedFileId = newOwnerGoogleService.UploadFile(file, stream);
-                if (file.ExplicitlyTrashed.HasValue && file.ExplicitlyTrashed.Value)
+                _expBackoffPolicy.GrantedDelivery(() =>
                 {
-                    filesToBeTrashed.Add(loadedFileId);
-                }
+                    var loadedFileId = newOwnerGoogleService.UploadFile(file, stream);
+                    if (file.ExplicitlyTrashed.HasValue && file.ExplicitlyTrashed.Value)
+                    {
+                        filesToBeTrashed.Add(loadedFileId);
+                    }
 
-                callback(file);
+                    callback(file);
+                });                
             }
 
             // delete
-            var batch = new BatchRequest(_driveService);
-            foreach (var file in files)
-            {
-                var deleteCommand = _driveService.Files.Delete(file.Id);
-                batch.Queue<object>(deleteCommand, EmbtyBatchCallback);
-            }
-
-            batch.ExecuteAsync().Wait();
-            Timeout();
+            WrapBatchOperation(files, file => _driveService.Files.Delete(file.Id));
 
             newOwnerGoogleService.TrashFiles(filesToBeTrashed);
+        }
+
+        private void WrapBatchOperation<TSource>(IReadOnlyList<TSource> sourceList, Func<TSource, IClientServiceRequest> commandProvider, Action<int> callback = null)
+        {
+            List<RequestsInfo> requestsInfo = null;
+            BatchRequest.OnResponse<object> batchCallback = (_, error, index, __) =>
+            {
+                requestsInfo[index].ErrorMsg = error?.Message;
+                callback?.Invoke(index);
+
+                if (index == (requestsInfo.Count-1) && requestsInfo.Any(ri => !ri.Success))
+                {
+                    var messages = requestsInfo.Where(ri => !ri.Success).Select(ri => ri.ErrorMsg).Distinct();
+                    throw new InvalidOperationException(string.Join(Environment.NewLine, messages));
+                }
+            };
+
+            var consideredCount = 0;
+            while (consideredCount != sourceList.Count)
+            {
+                var batchSources = sourceList.Skip(consideredCount).Take(100).ToArray();
+
+                var batch = new BatchRequest(_driveService);
+                requestsInfo = new List<RequestsInfo>();
+                foreach (var source in batchSources)
+                {
+                    var request = commandProvider(source);
+                    if (request == null)
+                    {
+                        continue;
+                    }
+
+                    requestsInfo.Add(new RequestsInfo
+                    {
+                        Request = request
+                    });
+                    batch.Queue(request, batchCallback);
+                }
+
+                _expBackoffPolicy.GrantedDelivery(() => batch.ExecuteAsync().Wait(), () => 
+                {
+                    requestsInfo = requestsInfo.Where(ri => !ri.Success).ToList();
+                    var newBatch = new BatchRequest(_driveService);
+                    foreach (var requestInfo in requestsInfo)
+                    {
+                        newBatch.Queue(requestInfo.Request, batchCallback);
+                    }
+                    newBatch.ExecuteAsync().Wait();
+                });
+                consideredCount += batchSources.Length;
+            }
+        }
+
+        class RequestsInfo
+        {
+            public IClientServiceRequest Request { get; set; }
+            public bool Success => string.IsNullOrWhiteSpace(ErrorMsg);
+            public string ErrorMsg { get; set; }
         }
 
         private void EmbtyBatchCallback(
@@ -278,18 +293,10 @@ namespace UI
 
         public void TrashFiles(IReadOnlyList<string> filesIdsToTrash)
         {
-            var batch = new BatchRequest(_driveService);
-            foreach (var fileId in filesIdsToTrash)
+            WrapBatchOperation(filesIdsToTrash, fileId => _driveService.Files.Update(new Google.Apis.Drive.v3.Data.File
             {
-                var updateCommand = _driveService.Files.Update(new Google.Apis.Drive.v3.Data.File
-                {
-                    Trashed = true
-                }, fileId);
-                batch.Queue<object>(updateCommand, EmbtyBatchCallback);
-            }
-
-            batch.ExecuteAsync().Wait();
-            Timeout();
+                Trashed = true
+            }, fileId));
         }
 
         public string UploadFile(FileDTO file, Stream stream)
@@ -300,7 +307,7 @@ namespace UI
                     Parents = file.Parents
                 }, stream, file.MimeType);
             createFileCommand.Fields = "id";
-            createFileCommand.Upload();
+            _expBackoffPolicy.GrantedDelivery(() => createFileCommand.Upload());
             Timeout();
 
             return createFileCommand.ResponseBody.Id;

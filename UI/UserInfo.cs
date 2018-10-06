@@ -25,5 +25,7 @@ namespace UI
         /// Uri to a photo link
         /// </summary>
         public Uri PhotoLink { get; set; }
+
+        public string RootFolderId { get; set; }
     }
 }

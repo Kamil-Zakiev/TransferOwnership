@@ -15,10 +15,15 @@ namespace UI
         static string[] Scopes = { DriveService.Scope.Drive  };
 
         static string ApplicationName = "OwnershipTransmit";
-            
-        public Form1(IGoogleAuthorizeService oldOwnerAuthService, IGoogleAuthorizeService newOwnerAuthService)
+
+        private readonly IExpBackoffPolicy _expBackoffPolicy;
+
+        public Form1(IGoogleAuthorizeService oldOwnerAuthService, IGoogleAuthorizeService newOwnerAuthService, IExpBackoffPolicy expBackoffPolicy)
         {
+            _expBackoffPolicy = expBackoffPolicy ?? throw new ArgumentNullException(nameof(expBackoffPolicy));
+
             InitializeComponent();
+            label2.Text = string.Empty;
             OldOwnerAuthService = oldOwnerAuthService;
             NewOwnerAuthService = newOwnerAuthService;
             progressBar1.Visible = false;
@@ -44,7 +49,7 @@ namespace UI
                     HttpClientInitializer = t.Result,
                     ApplicationName = ApplicationName,
                 });
-                OldOwnerGoogleService = new GoogleService(service);
+                OldOwnerGoogleService = new GoogleService(service, _expBackoffPolicy);
             }, TaskContinuationOptions.OnlyOnRanToCompletion);
 
             serviceCreationTask.ContinueWith(t => UpdateFileList(), CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.FromCurrentSynchronizationContext());
@@ -88,7 +93,7 @@ namespace UI
                     HttpClientInitializer = t.Result,
                     ApplicationName = ApplicationName,
                 });
-                NewOwnerGoogleService = new GoogleService(service);
+                NewOwnerGoogleService = new GoogleService(service, _expBackoffPolicy);
 
                 var userInfo = NewOwnerGoogleService.GetUserInfo();
                 label1.Text = userInfo.Name + " (" + userInfo.EmailAddress + ")";
@@ -99,14 +104,18 @@ namespace UI
         private void AddPermToTest_Click(object sender, EventArgs e)
         {
             progressBar1.Visible = true;
-            progressBar1.Value = 1;
+            progressBar1.Value = 0;
             progressBar1.Maximum = files.Count;
+            label2.Text = ((double)progressBar1.Value / progressBar1.Maximum).ToString("P");
 
             var syncContextScheduler = TaskScheduler.FromCurrentSynchronizationContext();
 
             var transferTask = new Task(() => OldOwnerGoogleService.RejectRights(files, NewOwnerGoogleService, file =>
             {
-                var task = new Task(() => progressBar1.Increment(1));
+                var task = new Task(() => {
+                    label2.Text = ((double)progressBar1.Value/ progressBar1.Maximum).ToString("P");
+                    progressBar1.Increment(1);
+                });
                 task.Start(syncContextScheduler);
             }));
 
@@ -166,6 +175,14 @@ namespace UI
             textBox1.Text = label1.Text = OldOnerNameLabel.Text = "";
             pictureBox1.Image = pictureBox2.Image = null;
             OldOwnerGoogleService = NewOwnerGoogleService = null;
+        }
+
+        private void progressBar1_VisibleChanged(object sender, EventArgs e)
+        {
+            if (!progressBar1.Visible)
+            {
+                label2.Text = string.Empty;
+            }
         }
     }
 }
