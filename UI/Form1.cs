@@ -17,10 +17,12 @@ namespace UI
         static string ApplicationName = "OwnershipTransmit";
 
         private readonly IExpBackoffPolicy _expBackoffPolicy;
+        private readonly ITimeoutService _timeoutService;
 
-        public Form1(IGoogleAuthorizeService oldOwnerAuthService, IGoogleAuthorizeService newOwnerAuthService, IExpBackoffPolicy expBackoffPolicy)
+        public Form1(IGoogleAuthorizeService oldOwnerAuthService, IGoogleAuthorizeService newOwnerAuthService, IExpBackoffPolicy expBackoffPolicy, ITimeoutService timeoutService)
         {
             _expBackoffPolicy = expBackoffPolicy ?? throw new ArgumentNullException(nameof(expBackoffPolicy));
+            _timeoutService = timeoutService ?? throw new ArgumentNullException(nameof(timeoutService));
 
             InitializeComponent();
             label2.Text = string.Empty;
@@ -49,7 +51,7 @@ namespace UI
                     HttpClientInitializer = t.Result,
                     ApplicationName = ApplicationName,
                 });
-                OldOwnerGoogleService = new GoogleService(service, _expBackoffPolicy);
+                OldOwnerGoogleService = new GoogleService(service, _expBackoffPolicy, _timeoutService);
             }, TaskContinuationOptions.OnlyOnRanToCompletion);
 
             serviceCreationTask.ContinueWith(t => UpdateFileList(), CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.FromCurrentSynchronizationContext());
@@ -93,7 +95,7 @@ namespace UI
                     HttpClientInitializer = t.Result,
                     ApplicationName = ApplicationName,
                 });
-                NewOwnerGoogleService = new GoogleService(service, _expBackoffPolicy);
+                NewOwnerGoogleService = new GoogleService(service, _expBackoffPolicy, _timeoutService);
 
                 var userInfo = NewOwnerGoogleService.GetUserInfo();
                 label1.Text = userInfo.Name + " (" + userInfo.EmailAddress + ")";
@@ -122,8 +124,9 @@ namespace UI
             transferTask.ContinueWith(t =>
             {
                 UpdateFileList();
+                var sleepTime = (double)_timeoutService.CallTime * _timeoutService.GetTimeout() / 1000;
                 MessageBox.Show(null,
-                       "Перенос завершен",
+                       $"Перенос завершен.{Environment.NewLine}Таймаут был вызван {_timeoutService.CallTime} раз (поток был усыплён на {sleepTime.ToString("F2")} секунд)",
                        "Сообщение",
                        MessageBoxButtons.OK,
                        MessageBoxIcon.Information);

@@ -23,7 +23,11 @@ namespace UI
             var oldAuthService = new GoogleAuthorizeService(configFilePath, new[] { DriveService.Scope.Drive }, "token.json");
             var newAuthService = new GoogleAuthorizeService(configFilePath, new[] { DriveService.Scope.Drive }, "token2.json");
             var expBackoffPolicy = new ExpBackoffPolicy();
-            Application.Run(new Form1(oldAuthService, newAuthService, expBackoffPolicy));
+
+            var timeoutValueProvider = new ConfigTimeoutValueProvider();
+            var timeoutService = new TimeoutService(timeoutValueProvider);
+
+            Application.Run(new Form1(oldAuthService, newAuthService, expBackoffPolicy, timeoutService));
         }
     }
 }

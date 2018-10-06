@@ -28,16 +28,18 @@ namespace UI
         };
 
         private readonly IExpBackoffPolicy _expBackoffPolicy;
+        private readonly ITimeoutService _timeoutService;
 
-        public GoogleService(DriveService driveService, IExpBackoffPolicy expBackoffPolicy)
+        public GoogleService(DriveService driveService, IExpBackoffPolicy expBackoffPolicy, ITimeoutService timeoutService)
         {
             _driveService = driveService ?? throw new ArgumentNullException(nameof(driveService));
             _expBackoffPolicy = expBackoffPolicy ?? throw new ArgumentNullException(nameof(expBackoffPolicy));
+            _timeoutService = timeoutService ?? throw new ArgumentNullException(nameof(timeoutService));
         }
 
-        private void Timeout(int seconds = 5)
+        private void Timeout()
         {
-            Thread.Sleep(200);
+            _timeoutService.Timeout();
         }
 
         public IReadOnlyList<FileDTO> GetOwnedFiles()
@@ -52,6 +54,7 @@ namespace UI
             do
             {
                 var listResult = listRequest.Execute();
+                Timeout();
                 var filesChunk = listResult.Files;
                 listRequest.PageToken = listResult.NextPageToken;
                 if (filesChunk == null || filesChunk.Count == 0)
@@ -65,7 +68,6 @@ namespace UI
                     break;
                 }
 
-                Timeout(1);
             } while (true);
 
             var currentUser = GetUserInfo();
@@ -97,10 +99,12 @@ namespace UI
             aboutGet.Fields = "user";
 
             var user = aboutGet.Execute().User;
+            Timeout();
 
             var rootgetCommand = _driveService.Files.Get("root");
             rootgetCommand.Fields = "id";
             var rootId = rootgetCommand.Execute().Id;
+            Timeout();
 
             return _userInfo = new UserInfo
             {
@@ -192,7 +196,6 @@ namespace UI
 
                 // download
                 _expBackoffPolicy.GrantedDelivery(() => request.Download(stream));
-
                 Timeout();
 
                 // upload
@@ -223,6 +226,7 @@ namespace UI
 
         private void WrapBatchOperation<TSource>(IReadOnlyList<TSource> sourceList, Func<TSource, IClientServiceRequest> commandProvider, Action<int> callback = null)
         {
+            // nonlinear logic!
             List<RequestsInfo> requestsInfo = null;
             BatchRequest.OnResponse<object> batchCallback = (_, error, index, __) =>
             {
@@ -237,9 +241,10 @@ namespace UI
             };
 
             var consideredCount = 0;
+            const int BatchSize = 30;
             while (consideredCount != sourceList.Count)
             {
-                var batchSources = sourceList.Skip(consideredCount).Take(100).ToArray();
+                var batchSources = sourceList.Skip(consideredCount).Take(BatchSize).ToArray();
 
                 var batch = new BatchRequest(_driveService);
                 requestsInfo = new List<RequestsInfo>();
@@ -258,16 +263,24 @@ namespace UI
                     batch.Queue(request, batchCallback);
                 }
 
-                _expBackoffPolicy.GrantedDelivery(() => batch.ExecuteAsync().Wait(), () => 
-                {
-                    requestsInfo = requestsInfo.Where(ri => !ri.Success).ToList();
-                    var newBatch = new BatchRequest(_driveService);
-                    foreach (var requestInfo in requestsInfo)
+                _expBackoffPolicy.GrantedDelivery(
+                    () => 
                     {
-                        newBatch.Queue(requestInfo.Request, batchCallback);
-                    }
-                    newBatch.ExecuteAsync().Wait();
-                });
+                        batch.ExecuteAsync().Wait();
+                        Timeout();
+                    }, 
+                    () => 
+                    {
+                        // prepare retry batch composed of nonsuccess requests
+                        requestsInfo = requestsInfo.Where(ri => !ri.Success).ToList();
+                        var newBatch = new BatchRequest(_driveService);
+                        foreach (var requestInfo in requestsInfo)
+                        {
+                            newBatch.Queue(requestInfo.Request, batchCallback);
+                        }
+                        newBatch.ExecuteAsync().Wait();
+                        Timeout();
+                    });
                 consideredCount += batchSources.Length;
             }
         }
@@ -277,18 +290,6 @@ namespace UI
             public IClientServiceRequest Request { get; set; }
             public bool Success => string.IsNullOrWhiteSpace(ErrorMsg);
             public string ErrorMsg { get; set; }
-        }
-
-        private void EmbtyBatchCallback(
-                object permission,
-                RequestError error,
-                int index,
-                System.Net.Http.HttpResponseMessage message)
-        {
-            if (!string.IsNullOrWhiteSpace(error?.Message))
-            {
-                throw new InvalidOperationException(error.Message);
-            }
         }
 
         public void TrashFiles(IReadOnlyList<string> filesIdsToTrash)

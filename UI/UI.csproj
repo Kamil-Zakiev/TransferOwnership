@@ -68,6 +68,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ConfigTimeoutValueProvider.cs" />
     <Compile Include="EmbeddedBrowserCodeReceiver.cs" />
     <Compile Include="ExpBackoffPolicy.cs" />
     <Compile Include="FileDTO.cs" />
@@ -89,6 +90,7 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TimeoutService.cs" />
     <Compile Include="TransferingResult.cs" />
     <Compile Include="UserInfo.cs" />
     <EmbeddedResource Include="Form1.resx">
