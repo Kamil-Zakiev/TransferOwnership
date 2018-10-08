@@ -10,7 +10,14 @@ namespace UI
 
     internal class ExpBackoffPolicy : IExpBackoffPolicy
     {
-        private const int RetryCount = 4;
+        private ILogger _logger;
+
+        public ExpBackoffPolicy(ILogger logger)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        private const int RetryCount = 5;
 
         public void GrantedDelivery(Action action, Action replacingAction = null)
         {
@@ -21,11 +28,14 @@ namespace UI
                 try
                 {
                     attemptNumber++;
+                    _logger.LogMessage($"Попытка запуска № {attemptNumber}.");
                     action();
                     return;
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    var message = Helpers.GetFullMessage(ex);
+                    _logger.LogMessage($"Ошибка при запуске № {attemptNumber}: " + message);
                     if (attemptNumber > RetryCount)
                     {
                         throw;
@@ -37,6 +47,7 @@ namespace UI
                     }
 
                     var sleepSeconds = Math.Pow(2, attemptNumber);
+                    _logger.LogMessage($"Усыпляем поток выполнения на {sleepSeconds} секунд.");
                     Thread.Sleep(TimeSpan.FromSeconds(sleepSeconds));
                 }
             }

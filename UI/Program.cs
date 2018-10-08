@@ -22,12 +22,14 @@ namespace UI
             var configFilePath = ConfigurationManager.AppSettings["GoogleAppConfigFile"];
             var oldAuthService = new GoogleAuthorizeService(configFilePath, new[] { DriveService.Scope.Drive }, "token.json");
             var newAuthService = new GoogleAuthorizeService(configFilePath, new[] { DriveService.Scope.Drive }, "token2.json");
-            var expBackoffPolicy = new ExpBackoffPolicy();
+
+            var logger = new FileLogger(ConfigurationManager.AppSettings["logfile"]);
+            var expBackoffPolicy = new ExpBackoffPolicy(logger);
 
             var timeoutValueProvider = new ConfigTimeoutValueProvider();
-            var timeoutService = new TimeoutService(timeoutValueProvider);
+            var timeoutService = new TimeoutService(timeoutValueProvider, logger);
 
-            Application.Run(new Form1(oldAuthService, newAuthService, expBackoffPolicy, timeoutService));
+            Application.Run(new Form1(oldAuthService, newAuthService, expBackoffPolicy, timeoutService, logger));
         }
     }
 }

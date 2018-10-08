@@ -1,0 +1,63 @@
+[08.10.2018 23:02:58]: Программа запущена на выполнение
+[08.10.2018 23:03:04]: Получаем файлы старого пользователя с использованием токена '<null>'.
+[08.10.2018 23:03:05]: Поток исполнения заморожен на 0ms.
+[08.10.2018 23:03:05]: Получаем файлы старого пользователя с использованием токена '~!!~AI9FV7ScHtUxf-WVfxvJ3V3IthkI5OTxVlQ78MW-V3y7ZLx-gDMq7ITcgWgYuWmq6-e4pl3j54dhOG6KnpSPs1UqDU63_9O-l7cYG9IR8Xjbktq5PViTQlC0uPAiVIbwTpLCsVJeCWoWDRfx61GqGQL6aOA0AkxuXZpiqW1Gru46dzDQ5ZM9wtuySHGkJa4WL4Lvl0j3yYPciy8t9fndIteSGCKQrm5erQzs1YPA_syxoKCgfOnJXfHYfsf15gePhXxIG22aKTGvG3uyPl1KElm_RUk3WhyYsHhhGVfA6__naDOtDl6f6EOpTaPo4plm8guWOGLrbgwC6z396XnKkxgoImFbu0WBhjz9_C4YywERPPsdPcxZGZjzVKY3C5y82rTdLjeoUn7R'.
+[08.10.2018 23:03:05]: Поток исполнения заморожен на 0ms.
+[08.10.2018 23:03:05]: Получаем файлы старого пользователя с использованием токена '~!!~AI9FV7QqlHFIZk1A5OsAlHuCvDG1_MO9IrCV5Nmo-SPMT0Kr-3kcDdoFJ6xptqf-n8a6Wc3CAD1N7eLkiTkKrgRjFvQAmBuo7eASGrXitbU9nzRrdhKUl2IAN9-J7KTJ_gcymSPWDBhu9MNJLc-kWfWUQ00wYJlH3dZ0_oXL1Ybq5YE5DaBzeRRTyzHhNn9RZokjrdUf6G0rmnXUXw9b1OJcpK3lgyaxdXxRDTjt32FBUye-GLbzDMOVFd9NiZYye_zmbjZZKKHkK4an46lZrF2xY1Dgcma5jl_PZYrnfBGQuw6zVQOuEc_ATObSSzvlmGoq3AW5W6PEmCS9pILsEcwj3pVLp6jOf3uvlMzzk-6j6NJWUcbXARFASqlyp9t2TsRVrQpFl8_8'.
+[08.10.2018 23:03:06]: Поток исполнения заморожен на 0ms.
+[08.10.2018 23:03:06]: Получаем файлы старого пользователя с использованием токена '~!!~AI9FV7R9is-jwFUlWQ7wNVDjPdhxHvCgsIlGcCSWJv-tilDS55BwHIDYIHpqTtPWklDbNnLL2rDT12G3AEXjuaHV-o17qkwbytwWud9bKKwPmd4RhSYvrWrx43Lg5-uU9hqPESPVxU62Bgg7meGwXH2yRRgeErd2fLuuImNeVpQd74pJVtgEvzzAowFVRok3OlXDZTJP5W6lv0ii_KZ23kmMwJCSZtmdyjWFS0ZKWK1pGYJvqD6oOhiWHkjWi7JbZqV64NXv8voCRM4iczOciRAgodQrCPZ5p82M7aKYibYWNDn6vqvaSM_hsevWwaqfUIozLCmzlBEdMSj_XDKJTqVlkZ6n_hgfPdd1jYU56tcjU33EqFzzn95UKJtNGGNJXOJauqRRbDNP'.
+[08.10.2018 23:03:06]: Поток исполнения заморожен на 0ms.
+[08.10.2018 23:03:06]: Получаем файлы старого пользователя с использованием токена '~!!~AI9FV7RkNmDGolnASc6b0RcGBpFfO5ZwKNXvSkG_2eTfTRJJCEdGkXZv2JbCcwXFff5OSmv-RIehKFUMpL4xKi-233uVWdf1kvJU6HzsWPWNdTpEy8-8GErqe0_jLJ665NlPCnRrgu5MkHaIpwTviCHA1OFtFQgHUExhRz5CU4sZ5nFEkeVTsKR7lKk32ZAaE9c8Rwnx35NZTwCE6ymR9WJnSmFE4yUb0wPqS2nUmrNobRT9B-JH5R9UJRtlOzOHkMKIYUxOYMiQBQqx-6EbNEekkSFediX50fjPxXK57whOJeD7mDx6lKJx58sZZpdXpBQTO3yOFpw1P4aASe6RoUuycETqJ914zcrUTYW1VsJsW5KsDj8As2Bb_Y69zPyvpQFYfd3oceOo'.
+[08.10.2018 23:03:07]: Поток исполнения заморожен на 0ms.
+[08.10.2018 23:03:07]: Получаем файлы старого пользователя с использованием токена '~!!~AI9FV7T2qtEOy20QnWv7bNwtHm9HWsT9b0oiDb8kiyAyBEdydoF9HX3tAFmZN45muYOrTfsO_QetEamaJxfL1T9bnMa36gaPZXnXNHMA1-AmjGCaM-rq5PdV4TKn8G56Jgkp78Vw9raDVzTL31eRC9CPvZrhjyBcF4a88uIABk194dj2Z7K1LhvEAhdiX69T4U07RHa7gCx0tzhv9-vNueNLiPMX77fTxbtrYtZ71X1-itfzcDzMV04alpmKrzpVslWloyD-64Dd51k2PUs7svam8PwKMF07UMwPFb3e0YuHzaxOei-lBtRgvgCH-u3P5rLnwPNm1sAiya2mE87GpfZc7jOKIGLKOstoYH1enEOeSzj_bYIzbl8KeLnJ_NCUTH589tA7lFz5'.
+[08.10.2018 23:03:08]: Поток исполнения заморожен на 0ms.
+[08.10.2018 23:03:08]: Получаем файлы старого пользователя с использованием токена '~!!~AI9FV7Sg2IDPY3t5TdcSglZs51wYVIVwPQv-GwI767ZtE_D6p8stMXM6GQOABRbpylhMA3oBBLBAXcLeDPcUoiZEfOM0jX2lOU-Ko9T4vI8oadrtFmWgB_sES80nu9QslH53WYilZby1mGFBmKr3ejuo-tmzbL4HQyFrgIawrhyOuIDQ8Dmt-uhnbeYpI7LrSaxbxLiwO10UFHrptCavafBKEI_W-D9CV4KEcLmIY0NmdxcAofihLZpQ22oRxar4Fuw9WAOe-H2R4XVJNFmR3SOWfdy448KrzmeLayZY9rHtrml8Tor5HGSlNJix_ApZr6ZBjawgLbfJ4y-Og187OOHak7sBenaDKws6N6d1xyNcozXgpPQcDGkHODa6Wuzz8WP3NgQBCcKx'.
+[08.10.2018 23:03:08]: Поток исполнения заморожен на 0ms.
+[08.10.2018 23:03:08]: Получаем данные о пользователе.
+[08.10.2018 23:03:08]: Поток исполнения заморожен на 0ms.
+[08.10.2018 23:03:08]: Получаем данные о корневой папке.
+[08.10.2018 23:03:08]: Поток исполнения заморожен на 0ms.
+[08.10.2018 23:03:18]: Получаем данные о пользователе.
+[08.10.2018 23:03:18]: Поток исполнения заморожен на 0ms.
+[08.10.2018 23:03:18]: Получаем данные о корневой папке.
+[08.10.2018 23:03:18]: Поток исполнения заморожен на 0ms.
+[08.10.2018 23:05:35]: Запускаем функцию переноса гугл-документов.
+[08.10.2018 23:05:36]: Запускаем функцию переноса гугл-документов в пакетном режиме.
+[08.10.2018 23:05:36]: Начало пакетной операции.
+[08.10.2018 23:05:36]: Сформирован пакет запросов из 38 штук.
+[08.10.2018 23:05:36]: Попытка запуска № 3.
+[08.10.2018 23:05:36]: Отправка пакета на сервер Google Drive.
+[08.10.2018 23:05:37]: Ошибка при запуске № 3: Произошла одна или несколько ошибок.
+Rate limit exceeded. User message: "Квота совместного доступа превышена."
+[08.10.2018 23:05:37]: Усыпляем поток выполнения на 8 секунд.
+[08.10.2018 23:05:45]: Попытка запуска № 4.
+[08.10.2018 23:05:45]: ОШИБКА!!! Произошла ошибка при пакетной операции, будет сформирован новый пакет из провальных запросов
+[08.10.2018 23:05:45]: Сформирован новый пакет запросов из 38 штук.
+[08.10.2018 23:05:46]: Ошибка при запуске № 4: Произошла одна или несколько ошибок.
+Rate limit exceeded. User message: "Квота совместного доступа превышена."
+[08.10.2018 23:05:46]: Усыпляем поток выполнения на 16 секунд.
+[08.10.2018 23:06:02]: Попытка запуска № 5.
+[08.10.2018 23:06:02]: ОШИБКА!!! Произошла ошибка при пакетной операции, будет сформирован новый пакет из провальных запросов
+[08.10.2018 23:06:02]: Сформирован новый пакет запросов из 38 штук.
+[08.10.2018 23:06:03]: Ошибка при запуске № 5: Произошла одна или несколько ошибок.
+Rate limit exceeded. User message: "Квота совместного доступа превышена."
+[08.10.2018 23:06:03]: Усыпляем поток выполнения на 32 секунд.
+[08.10.2018 23:06:35]: Попытка запуска № 6.
+[08.10.2018 23:06:35]: ОШИБКА!!! Произошла ошибка при пакетной операции, будет сформирован новый пакет из провальных запросов
+[08.10.2018 23:06:35]: Сформирован новый пакет запросов из 38 штук.
+[08.10.2018 23:06:37]: Ошибка при запуске № 6: Произошла одна или несколько ошибок.
+Rate limit exceeded. User message: "Квота совместного доступа превышена."
+[08.10.2018 23:06:38]: Получаем файлы старого пользователя с использованием токена '<null>'.
+[08.10.2018 23:06:38]: Поток исполнения заморожен на 0ms.
+[08.10.2018 23:06:38]: Получаем файлы старого пользователя с использованием токена '~!!~AI9FV7ScHtUxf-WVfxvJ3V3IthkI5OTxVlQ78MW-V3y7ZLx-gDMq7ITcgWgYuWmq6-e4pl3j54dhOG6KnpSPs1UqDU63_9O-l7cYG9IR8Xjbktq5PViTQlC0uPAiVIbwTpLCsVJeCWoWDRfx61GqGQL6aOA0AkxuXZpiqW1Gru46dzDQ5ZM9wtuySHGkJa4WL4Lvl0i-YsDpmZHeviENE4YjflhycWREsy7iJ-sIQ9V6kUS_cUjcvX0YO2p20DOYnI1DHZ6_4QPF6ilcRCPkzpBWajivWtfV8FQsWKXAoGLgQ8dX7jnLQbA4OQljDvRovIbm-OFiG2CN7tLj45GMU5CRhCZBI6IkLB1dmg_RXUM3LIruJLwWFwmoA6aEi80sL0_kQSD00in8'.
+[08.10.2018 23:06:39]: Поток исполнения заморожен на 0ms.
+[08.10.2018 23:06:39]: Получаем файлы старого пользователя с использованием токена '~!!~AI9FV7QqlHFIZk1A5OsAlHuCvDG1_MO9IrCV5Nmo-SPMT0Kr-3kcDdoFJ6xptqf-n8a6Wc3CAD1N7eLkiTkKrgRjFvQAmBuo7eASGrXitbU9nzRrdhKUl2IAN9-J7KTJ_gcymSPWDBhu9MNJLc-kWfWUQ00wYJlH3dZ0_oXL1Ybq5YE5DaBzeRRTyzHhNn9RZokjrdVVokW2sHFEglLBDIO3Z4-a-Ql4WMZDeDOU6N99JhmVzpbc0uIx0YjL2uj6RlwI2uibgDsFfpRmu4elt0HIa0SxumMUQ7Oyl0UZVRj2Ex1I7DsD_bJHfs5B_cPMoD8zCayWxmc9JEImM-pDGueOznzVW-9Y3j2ibdkSn1Lk3EbHr89fdrEsQqAA_omNWKiUdYP4Xl0t'.
+[08.10.2018 23:06:40]: Поток исполнения заморожен на 0ms.
+[08.10.2018 23:06:40]: Получаем файлы старого пользователя с использованием токена '~!!~AI9FV7R9is-jwFUlWQ7wNVDjPdhxHvCgsIlGcCSWJv-tilDS55BwHIDYIHpqTtPWklDbNnLL2rDT12G3AEXjuaHV-o17qkwbytwWud9bKKwPmd4RhSYvrWrx43Lg5-uU9hqPESPVxU62Bgg7meGwXH2yRRgeErd2fLuuImNeVpQd74pJVtgEvzzAowFVRok3OlXDZTJnnHZgRQ0zeblOnpIW7VqoCFUsgNMISIkDhh2uZstYlIsNyqPQbOmb5J6SrKqgyi4a-05FVHziLfR1197GmyShqQgTOLebXK9CkQLc3wp2KeYkggElSAxmIrlrc62I25pKdGvir2ezCj2NeNJMe4hQETD16aSY1qmL8SBo_F5e9ZAhDg_McciRyXfkxMi36c06aJe6'.
+[08.10.2018 23:06:40]: Поток исполнения заморожен на 0ms.
+[08.10.2018 23:06:40]: Получаем файлы старого пользователя с использованием токена '~!!~AI9FV7RkNmDGolnASc6b0RcGBpFfO5ZwKNXvSkG_2eTfTRJJCEdGkXZv2JbCcwXFff5OSmv-RIehKFUMpL4xKi-233uVWdf1kvJU6HzsWPWNdTpEy8-8GErqe0_jLJ665NlPCnRrgu5MkHaIpwTviCHA1OFtFQgHUExhRz5CU4sZ5nFEkeVTsKR7lKk32ZAaE9c8Rwk2vCzQPi1PBy1iGgf1MeONGObTV-p57LjhdLvykH9KKaCiJ2PntK6P54ipLK6-X5sBc0OI8_7aY4BPgArLustytbRZFDMmiPbJPnSRf-czZi1atCRlz_CkyINhjjZMOLqHy-2Z2arnyJmvyHVgY0oJQUWD2J9UmZJuK2vYrc8FI3R11mZIzrwb1cLl-7Y3SUzYEMuj'.
+[08.10.2018 23:06:41]: Поток исполнения заморожен на 0ms.
+[08.10.2018 23:06:41]: Получаем файлы старого пользователя с использованием токена '~!!~AI9FV7T2qtEOy20QnWv7bNwtHm9HWsT9b0oiDb8kiyAyBEdydoF9HX3tAFmZN45muYOrTfsO_QetEamaJxfL1T9bnMa36gaPZXnXNHMA1-AmjGCaM-rq5PdV4TKn8G56Jgkp78Vw9raDVzTL31eRC9CPvZrhjyBcF4a88uIABk194dj2Z7K1LhvEAhdiX69T4U07RHbOosNUvtfxmcwrPBaswY2_-o7pJ5GPkDmD3Z_VUeuNTAH8BlLQLuNVGHLhoiZeKKO_2k1A-jIXuSjK9KpbHzwVVMl_ncCX2UvvZRFPVCdCtkk_1HlkLnrPtwBEPncnt-n0799WonncotHyOjzeisNaB4F-fGyvI4tG2gR_wzQRQIO3eisjPrLFtPNJjjKAbM553kW9'.
+[08.10.2018 23:06:41]: Поток исполнения заморожен на 0ms.
+[08.10.2018 23:06:41]: Получаем файлы старого пользователя с использованием токена '~!!~AI9FV7Sg2IDPY3t5TdcSglZs51wYVIVwPQv-GwI767ZtE_D6p8stMXM6GQOABRbpylhMA3oBBLBAXcLeDPcUoiZEfOM0jX2lOU-Ko9T4vI8oadrtFmWgB_sES80nu9QslH53WYilZby1mGFBmKr3ejuo-tmzbL4HQyFrgIawrhyOuIDQ8Dmt-uhnbeYpI7LrSaxbxLhEGXfH5DnswtkBT3ppfw3z_4dhJKj8yHvLY5_cteyv-DdubgHa537Gi6vXDP-pByjEsH19hp1hWhFnCW5Db6G0MRQdojO-5nzcMJReR29cp_HBhCEK6mqVnHzNDoNHbozUima6skSa7rM4GhNp_G196CcLtDPxg4ksR00re7BqZhsfoxwCko153im7ZgssCUoaV3rO'.
+[08.10.2018 23:06:41]: Поток исполнения заморожен на 0ms.

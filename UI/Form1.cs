@@ -18,11 +18,13 @@ namespace UI
 
         private readonly IExpBackoffPolicy _expBackoffPolicy;
         private readonly ITimeoutService _timeoutService;
+        private readonly ILogger _logger;
 
-        public Form1(IGoogleAuthorizeService oldOwnerAuthService, IGoogleAuthorizeService newOwnerAuthService, IExpBackoffPolicy expBackoffPolicy, ITimeoutService timeoutService)
+        public Form1(IGoogleAuthorizeService oldOwnerAuthService, IGoogleAuthorizeService newOwnerAuthService, IExpBackoffPolicy expBackoffPolicy, ITimeoutService timeoutService, ILogger logger)
         {
             _expBackoffPolicy = expBackoffPolicy ?? throw new ArgumentNullException(nameof(expBackoffPolicy));
             _timeoutService = timeoutService ?? throw new ArgumentNullException(nameof(timeoutService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             InitializeComponent();
             label2.Text = string.Empty;
@@ -51,7 +53,7 @@ namespace UI
                     HttpClientInitializer = t.Result,
                     ApplicationName = ApplicationName,
                 });
-                OldOwnerGoogleService = new GoogleService(service, _expBackoffPolicy, _timeoutService);
+                OldOwnerGoogleService = new GoogleService(service, _expBackoffPolicy, _timeoutService, _logger);
             }, TaskContinuationOptions.OnlyOnRanToCompletion);
 
             serviceCreationTask.ContinueWith(t => UpdateFileList(), CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.FromCurrentSynchronizationContext());
@@ -95,7 +97,7 @@ namespace UI
                     HttpClientInitializer = t.Result,
                     ApplicationName = ApplicationName,
                 });
-                NewOwnerGoogleService = new GoogleService(service, _expBackoffPolicy, _timeoutService);
+                NewOwnerGoogleService = new GoogleService(service, _expBackoffPolicy, _timeoutService, _logger);
 
                 var userInfo = NewOwnerGoogleService.GetUserInfo();
                 label1.Text = userInfo.Name + " (" + userInfo.EmailAddress + ")";
@@ -137,9 +139,7 @@ namespace UI
 
             transferTask.ContinueWith(t =>
             {
-                var messages = new List<string>();
-                FillExceptionMessages(messages, t.Exception);
-                var message = string.Join(Environment.NewLine, messages.Distinct());
+                var message = Helpers.GetFullMessage(t.Exception);
                 MessageBox.Show(null, message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
                 UpdateFileList();
@@ -147,27 +147,6 @@ namespace UI
             }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, syncContextScheduler);
 
             transferTask.Start();
-        }
-
-        private void FillExceptionMessages(List<string> messages, Exception exception)
-        {
-            if (!string.IsNullOrWhiteSpace(exception.Message))
-            {
-                messages.Add(exception.Message);
-            }
-
-            if (exception.InnerException != null)
-            {
-                FillExceptionMessages(messages, exception.InnerException);
-            }
-
-            if (exception is AggregateException aggregateException && aggregateException.InnerExceptions != null)
-            {
-                foreach (var ex in aggregateException.InnerExceptions)
-                {
-                    FillExceptionMessages(messages, ex);
-                }
-            }
         }
 
         private void button2_Click(object sender, EventArgs e)
