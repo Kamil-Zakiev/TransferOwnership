@@ -47,7 +47,7 @@ namespace UI
         public IReadOnlyList<FileDTO> GetOwnedFiles()
         {
             var listRequest = _driveService.Files.List();
-            listRequest.Fields = "nextPageToken,files(owners,ownedByMe,name,id,mimeType,parents,explicitlyTrashed)";
+            listRequest.Fields = "nextPageToken,files(owners,ownedByMe,name,id,mimeType,parents,explicitlyTrashed,permissions)";
             var pageSize = 100;
             listRequest.PageSize = pageSize;
 
@@ -84,7 +84,8 @@ namespace UI
                     OwnershipPermissionId = f.Owners.First(owner => owner.EmailAddress == currentUser.EmailAddress).PermissionId,
                     MimeType = f.MimeType,
                     Parents = f.Parents,
-                    ExplicitlyTrashed = f.ExplicitlyTrashed
+                    ExplicitlyTrashed = f.ExplicitlyTrashed,
+                    Permissions = f.Permissions
                 })
                 .ToArray();
         }
@@ -141,6 +142,14 @@ namespace UI
         private void TransferOwnershipTo(IReadOnlyList<FileDTO> googleFiles, IGoogleService newOwnerGoogleService, Action<FileDTO> callback)
         {
             var newOwner = newOwnerGoogleService.GetUserInfo();
+
+            // delete all other permission and save in local cache to future restore (except permissions of new user. He will be an owner anyway)
+            var permissionsWithFilesIds = googleFiles
+                .Select(f => new
+                {
+                    // todo: create commands to delete and commands to create permissions after transfer
+                    //f.F
+                });
 
             var commandsDto = googleFiles
                 .Select(file =>

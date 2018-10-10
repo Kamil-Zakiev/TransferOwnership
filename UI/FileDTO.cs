@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Google.Apis.Drive.v3.Data;
 
 namespace UI
 {
@@ -28,5 +29,6 @@ namespace UI
         public IList<string> Parents { get; internal set; }
 
         public bool? ExplicitlyTrashed { get; set; }
+        public IList<Permission> Permissions { get; internal set; }
     }
 }
