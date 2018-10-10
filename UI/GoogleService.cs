@@ -141,15 +141,43 @@ namespace UI
 
         private void TransferOwnershipTo(IReadOnlyList<FileDTO> googleFiles, IGoogleService newOwnerGoogleService, Action<FileDTO> callback)
         {
+            // for test only
+            googleFiles = googleFiles.Take(5).ToArray();
+
             var newOwner = newOwnerGoogleService.GetUserInfo();
+            var oldOwner = GetUserInfo();
 
             // delete all other permission and save in local cache to future restore (except permissions of new user. He will be an owner anyway)
-            var permissionsWithFilesIds = googleFiles
-                .Select(f => new
+            var hintCommands = googleFiles
+                .Select(file =>
                 {
-                    // todo: create commands to delete and commands to create permissions after transfer
-                    //f.F
-                });
+                    var othersPerms = file.Permissions
+                        .Where(perm => perm.EmailAddress != newOwner.EmailAddress && perm.EmailAddress != oldOwner.EmailAddress)
+                        .ToArray();
+                    if (!othersPerms.Any())
+                    {
+                        return (null, false);
+                    }
+
+                    var deleteCommands = othersPerms.Select(perm => _driveService.Permissions.Delete(file.Id, perm.Id));
+                    var createCommands = othersPerms.Select(perm => _driveService.Permissions.Create(perm, file.Id));
+                    return (new
+                    {
+                        deleteCommands,
+                        createCommands
+                    }, true);
+                })
+                .Where(dto => dto.Item2)
+                .Select(dto => dto.Item1)
+                .ToArray();
+
+            _logger.LogMessage("Удаляем сторонние права доступа, чтобы не вызвать ошибку рассылки сообщений.");
+            var permsDeleteCommands = hintCommands.SelectMany(dto => dto.deleteCommands).ToArray();
+            WrapBatchOperation(permsDeleteCommands, deleteCommand => deleteCommand);
+            _logger.LogMessage("Удалили сторонние права доступа, чтобы не вызвать ошибку рассылки сообщений.");
+
+            _logger.LogMessage("Останавливаем поток на 2 секунды, чтобы все изменения сохранились в сервисах Google Drive");
+            Thread.Sleep(2000);
 
             var commandsDto = googleFiles
                 .Select(file =>
@@ -169,6 +197,14 @@ namespace UI
 
             _logger.LogMessage($"Запускаем функцию переноса гугл-документов в пакетном режиме.");
             WrapBatchOperation(commandsDto, commandDto => commandDto.command, (index) => callback(googleFiles[index]));
+            
+            _logger.LogMessage("Останавливаем поток на 2 секунды, чтобы все изменения сохранились в сервисах Google Drive");
+            Thread.Sleep(2000);
+
+            _logger.LogMessage("Восстанавливаем сторонние права доступа.");
+            var permsCreateCommands = hintCommands.SelectMany(dto => dto.createCommands).ToArray();
+            WrapBatchOperation(permsCreateCommands, createCommand => createCommand);
+            _logger.LogMessage("Восстановили сторонние права доступа.");
 
             // removing edit permissions
             _logger.LogMessage($"Останавливаем поток на 2 секунды, чтобы все данные сохранились в сервисах Google Drive");
