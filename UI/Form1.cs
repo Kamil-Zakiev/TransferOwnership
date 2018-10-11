@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Threading;
+using System.Diagnostics;
 
 namespace UI
 {
@@ -17,16 +18,16 @@ namespace UI
         static string ApplicationName = "OwnershipTransmit";
 
         private readonly IExpBackoffPolicy _expBackoffPolicy;
-        private readonly ITimeoutService _timeoutService;
         private readonly ILogger _logger;
 
-        public Form1(IGoogleAuthorizeService oldOwnerAuthService, IGoogleAuthorizeService newOwnerAuthService, IExpBackoffPolicy expBackoffPolicy, ITimeoutService timeoutService, ILogger logger)
+        public Form1(IGoogleAuthorizeService oldOwnerAuthService, IGoogleAuthorizeService newOwnerAuthService, IExpBackoffPolicy expBackoffPolicy, ILogger logger)
         {
             _expBackoffPolicy = expBackoffPolicy ?? throw new ArgumentNullException(nameof(expBackoffPolicy));
-            _timeoutService = timeoutService ?? throw new ArgumentNullException(nameof(timeoutService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             InitializeComponent();
+            var formLogger = new FormLoggerDecorator(logger, textBox2, TaskScheduler.FromCurrentSynchronizationContext());
+            _logger = formLogger;
+
             label2.Text = string.Empty;
             OldOwnerAuthService = oldOwnerAuthService;
             NewOwnerAuthService = newOwnerAuthService;
@@ -53,7 +54,7 @@ namespace UI
                     HttpClientInitializer = t.Result,
                     ApplicationName = ApplicationName,
                 });
-                OldOwnerGoogleService = new GoogleService(service, _expBackoffPolicy, _timeoutService, _logger);
+                OldOwnerGoogleService = new GoogleService(service, _expBackoffPolicy, _logger);
             }, TaskContinuationOptions.OnlyOnRanToCompletion);
 
             serviceCreationTask.ContinueWith(t => UpdateFileList(), CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.FromCurrentSynchronizationContext());
@@ -97,7 +98,7 @@ namespace UI
                     HttpClientInitializer = t.Result,
                     ApplicationName = ApplicationName,
                 });
-                NewOwnerGoogleService = new GoogleService(service, _expBackoffPolicy, _timeoutService, _logger);
+                NewOwnerGoogleService = new GoogleService(service, _expBackoffPolicy, _logger);
 
                 var userInfo = NewOwnerGoogleService.GetUserInfo();
                 label1.Text = userInfo.Name + " (" + userInfo.EmailAddress + ")";
@@ -123,12 +124,14 @@ namespace UI
                 task.Start(syncContextScheduler);
             }));
 
+            var stopWatch = new Stopwatch();            
             transferTask.ContinueWith(t =>
             {
                 UpdateFileList();
-                var sleepTime = (double)_timeoutService.CallTime * _timeoutService.GetTimeout() / 1000;
+                stopWatch.Stop();
+                var execSec = (double)stopWatch.ElapsedMilliseconds / 1000;
                 MessageBox.Show(null,
-                       $"Перенос завершен.{Environment.NewLine}Таймаут был вызван {_timeoutService.CallTime} раз (поток был усыплён на {sleepTime.ToString("F2")} секунд)",
+                       $"Перенос завершен. Время работы программы {execSec.ToString("F2")} секунд)",
                        "Сообщение",
                        MessageBoxButtons.OK,
                        MessageBoxIcon.Information);
@@ -147,6 +150,7 @@ namespace UI
             }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, syncContextScheduler);
 
             transferTask.Start();
+            stopWatch.Start();
         }
 
         private void button2_Click(object sender, EventArgs e)

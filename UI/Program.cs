@@ -26,10 +26,7 @@ namespace UI
             var logger = new FileLogger(ConfigurationManager.AppSettings["logfile"]);
             var expBackoffPolicy = new ExpBackoffPolicy(logger);
 
-            var timeoutValueProvider = new ConfigTimeoutValueProvider();
-            var timeoutService = new TimeoutService(timeoutValueProvider, logger);
-
-            Application.Run(new Form1(oldAuthService, newAuthService, expBackoffPolicy, timeoutService, logger));
+            Application.Run(new Form1(oldAuthService, newAuthService, expBackoffPolicy, logger));
         }
     }
 }

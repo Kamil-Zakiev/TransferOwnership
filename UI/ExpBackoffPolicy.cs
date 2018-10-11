@@ -17,7 +17,7 @@ namespace UI
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        private const int RetryCount = 5;
+        private const int RetryCount = 6;
 
         public void GrantedDelivery(Action action, Action replacingAction = null)
         {
@@ -46,7 +46,7 @@ namespace UI
                         action = replacingAction;
                     }
 
-                    var sleepSeconds = Math.Pow(2, attemptNumber);
+                    var sleepSeconds = Math.Pow(2, attemptNumber); // 2, 4, 8, 16, 32, 64 sec
                     _logger.LogMessage($"Усыпляем поток выполнения на {sleepSeconds} секунд.");
                     Thread.Sleep(TimeSpan.FromSeconds(sleepSeconds));
                 }

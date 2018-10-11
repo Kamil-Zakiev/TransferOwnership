@@ -18,7 +18,7 @@ namespace UI
         {
             if (!File.Exists(filePath))
             {
-                throw new FileNotFoundException($"По заданному пути '{filePath}' не найден лог-файл");
+                return;
             }
 
             _filePath = filePath;
@@ -28,6 +28,11 @@ namespace UI
 
         public void LogMessage(string message)
         {
+            if (_filePath == null)
+            {
+                return;
+            }
+
             File.AppendAllLines(_filePath, new[] { $"[{NowStr}]: {message}" });
         }
     }

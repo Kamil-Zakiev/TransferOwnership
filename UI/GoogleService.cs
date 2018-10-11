@@ -28,20 +28,13 @@ namespace UI
         };
 
         private readonly IExpBackoffPolicy _expBackoffPolicy;
-        private readonly ITimeoutService _timeoutService;
         private readonly ILogger _logger;
 
-        public GoogleService(DriveService driveService, IExpBackoffPolicy expBackoffPolicy, ITimeoutService timeoutService, ILogger logger)
+        public GoogleService(DriveService driveService, IExpBackoffPolicy expBackoffPolicy, ILogger logger)
         {
             _driveService = driveService ?? throw new ArgumentNullException(nameof(driveService));
             _expBackoffPolicy = expBackoffPolicy ?? throw new ArgumentNullException(nameof(expBackoffPolicy));
-            _timeoutService = timeoutService ?? throw new ArgumentNullException(nameof(timeoutService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        }
-
-        private void Timeout(int times = 1)
-        {
-            _timeoutService.Timeout(times);
         }
 
         public IReadOnlyList<FileDTO> GetOwnedFiles()
@@ -57,7 +50,6 @@ namespace UI
             {
                 _logger.LogMessage($"Получаем файлы старого пользователя с использованием токена '{listRequest.PageToken??"<null>"}'.");
                 var listResult = listRequest.Execute();
-                Timeout(0);
                 var filesChunk = listResult.Files;
                 listRequest.PageToken = listResult.NextPageToken;
                 if (filesChunk == null || filesChunk.Count == 0)
@@ -105,13 +97,11 @@ namespace UI
             aboutGet.Fields = "user";
 
             var user = aboutGet.Execute().User;
-            Timeout(0);
 
             _logger.LogMessage($"Получаем данные о корневой папке.");
             var rootgetCommand = _driveService.Files.Get("root");
             rootgetCommand.Fields = "id";
             var rootId = rootgetCommand.Execute().Id;
-            Timeout(0);
 
             return _userInfo = new UserInfo
             {
@@ -141,43 +131,7 @@ namespace UI
 
         private void TransferOwnershipTo(IReadOnlyList<FileDTO> googleFiles, IGoogleService newOwnerGoogleService, Action<FileDTO> callback)
         {
-            // for test only
-            googleFiles = googleFiles.Take(5).ToArray();
-
             var newOwner = newOwnerGoogleService.GetUserInfo();
-            var oldOwner = GetUserInfo();
-
-            // delete all other permission and save in local cache to future restore (except permissions of new user. He will be an owner anyway)
-            var hintCommands = googleFiles
-                .Select(file =>
-                {
-                    var othersPerms = file.Permissions
-                        .Where(perm => perm.EmailAddress != newOwner.EmailAddress && perm.EmailAddress != oldOwner.EmailAddress)
-                        .ToArray();
-                    if (!othersPerms.Any())
-                    {
-                        return (null, false);
-                    }
-
-                    var deleteCommands = othersPerms.Select(perm => _driveService.Permissions.Delete(file.Id, perm.Id));
-                    var createCommands = othersPerms.Select(perm => _driveService.Permissions.Create(perm, file.Id));
-                    return (new
-                    {
-                        deleteCommands,
-                        createCommands
-                    }, true);
-                })
-                .Where(dto => dto.Item2)
-                .Select(dto => dto.Item1)
-                .ToArray();
-
-            _logger.LogMessage("Удаляем сторонние права доступа, чтобы не вызвать ошибку рассылки сообщений.");
-            var permsDeleteCommands = hintCommands.SelectMany(dto => dto.deleteCommands).ToArray();
-            WrapBatchOperation(permsDeleteCommands, deleteCommand => deleteCommand);
-            _logger.LogMessage("Удалили сторонние права доступа, чтобы не вызвать ошибку рассылки сообщений.");
-
-            _logger.LogMessage("Останавливаем поток на 2 секунды, чтобы все изменения сохранились в сервисах Google Drive");
-            Thread.Sleep(2000);
 
             var commandsDto = googleFiles
                 .Select(file =>
@@ -201,11 +155,6 @@ namespace UI
             _logger.LogMessage("Останавливаем поток на 2 секунды, чтобы все изменения сохранились в сервисах Google Drive");
             Thread.Sleep(2000);
 
-            _logger.LogMessage("Восстанавливаем сторонние права доступа.");
-            var permsCreateCommands = hintCommands.SelectMany(dto => dto.createCommands).ToArray();
-            WrapBatchOperation(permsCreateCommands, createCommand => createCommand);
-            _logger.LogMessage("Восстановили сторонние права доступа.");
-
             // removing edit permissions
             _logger.LogMessage($"Останавливаем поток на 2 секунды, чтобы все данные сохранились в сервисах Google Drive");
             Thread.Sleep(2000);
@@ -224,10 +173,7 @@ namespace UI
 
             var listRequest = _driveService.Files.List();
             listRequest.Fields = "files(id,parents)";
-            var filesData = listRequest.Execute().Files
-                .Where(f => files.Any(dir => dir.Id == f.Id))
-                .ToArray();
-            Timeout();
+            var filesData = listRequest.Execute().Files.Where(f => files.Any(dir => dir.Id == f.Id)).ToArray();
 
             _logger.LogMessage($"Восстанавливаем иерархию для гугл-документов в пакетном режиме.");
             WrapBatchOperation(filesData, fileData => 
@@ -258,7 +204,6 @@ namespace UI
                 // download
                 _logger.LogMessage($"Скачиваем файл {file.Name} ({file.Id}).");
                 _expBackoffPolicy.GrantedDelivery(() => request.Download(stream));
-                Timeout();
 
                 // upload
                 _logger.LogMessage($"Загружаем файл {file.Name}.");
@@ -272,7 +217,7 @@ namespace UI
                 _expBackoffPolicy.GrantedDelivery(() =>
                 {
                     var loadedFileId = newOwnerGoogleService.UploadFile(file, stream);
-                    if (file.ExplicitlyTrashed.HasValue && file.ExplicitlyTrashed.Value)
+                    if (file.ExplicitlyTrashed.HasValue && file.ExplicitlyTrashed.Value && !string.IsNullOrWhiteSpace(loadedFileId))
                     {
                         filesToBeTrashed.Add(loadedFileId);
                     }
@@ -338,12 +283,11 @@ namespace UI
                     {
                         _logger.LogMessage($"Отправка пакета на сервер Google Drive.");
                         batch.ExecuteAsync().Wait();
-                        _logger.LogMessage($"Блокируем поток исполнения после успешного выполнения.");
-                        Timeout(batch.Count);
+                        _logger.LogMessage($"Отправка пакета на сервер Google Drive прошла успешно.");
                     }, 
                     () =>
                     {
-                        _logger.LogMessage($"ОШИБКА!!! Произошла ошибка при пакетной операции, будет сформирован новый пакет из провальных запросов");
+                        _logger.LogMessage($"Из-за ошибки при пакетной операции, будет сформирован новый пакет из провальных запросов");
                         // prepare retry batch composed of nonsuccess requests
                         requestsInfo = requestsInfo.Where(ri => !ri.Success).ToList();
                         var newBatch = new BatchRequest(_driveService);
@@ -353,8 +297,7 @@ namespace UI
                         }
                         _logger.LogMessage($"Сформирован новый пакет запросов из {newBatch.Count} штук.");
                         newBatch.ExecuteAsync().Wait();
-                        _logger.LogMessage($"Блокируем поток исполнения после успешного выполнения.");
-                        Timeout(newBatch.Count);
+                        _logger.LogMessage($"Отправка пакета на сервер Google Drive прошла успешно.");
                     });
                 consideredCount += batchSources.Length;
             }
@@ -388,9 +331,8 @@ namespace UI
             createFileCommand.Fields = "id";
             _expBackoffPolicy.GrantedDelivery(() => createFileCommand.Upload());
             _logger.LogMessage($"Загрузка файла {file.Name} завершена.");
-            Timeout();
 
-            return createFileCommand.ResponseBody.Id;
+            return createFileCommand.ResponseBody?.Id;
         }
     }
 }
