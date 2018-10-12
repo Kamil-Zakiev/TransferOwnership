@@ -171,9 +171,7 @@ namespace UI
             _logger.LogMessage($"Восстанавливаем иерархию для гугл-документов.");
             var rootId = GetUserInfo().RootFolderId;
 
-            var listRequest = _driveService.Files.List();
-            listRequest.Fields = "files(id,parents)";
-            var filesData = listRequest.Execute().Files.Where(f => files.Any(dir => dir.Id == f.Id)).ToArray();
+            var filesData = GetOwnedFiles();
 
             _logger.LogMessage($"Восстанавливаем иерархию для гугл-документов в пакетном режиме.");
             WrapBatchOperation(filesData, fileData => 
@@ -277,7 +275,7 @@ namespace UI
                     batch.Queue(request, batchCallback);
                 }
 
-                _logger.LogMessage($"Сформирован пакет запросов из {batchSources.Length} штук.");
+                _logger.LogMessage($"Сформирован пакет запросов из {batch.Count} штук.");
                 _expBackoffPolicy.GrantedDelivery(
                     () =>
                     {

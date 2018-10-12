@@ -127,17 +127,15 @@ namespace UI
             var stopWatch = new Stopwatch();            
             transferTask.ContinueWith(t =>
             {
-                UpdateFileList();
                 stopWatch.Stop();
+                UpdateFileList();
+                progressBar1.Visible = false;
                 var execSec = (double)stopWatch.ElapsedMilliseconds / 1000;
                 MessageBox.Show(null,
                        $"Перенос завершен. Время работы программы {execSec.ToString("F2")} секунд)",
                        "Сообщение",
                        MessageBoxButtons.OK,
                        MessageBoxIcon.Information);
-
-                UpdateFileList();
-                progressBar1.Visible = false;
             }, CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, syncContextScheduler);
 
             transferTask.ContinueWith(t =>
