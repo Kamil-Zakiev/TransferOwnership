@@ -14,25 +14,17 @@ namespace UI
 
         private string _filePath;
 
-        public FileLogger(string filePath)
+        public FileLogger(string filePath, string defaultFile)
         {
-            if (!File.Exists(filePath))
-            {
-                return;
-            }
-
-            _filePath = filePath;
+            _filePath = string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath)
+                ? defaultFile
+                : filePath;
 
             File.WriteAllLines(_filePath, new[] { $"[{NowStr}]: Программа запущена на выполнение" });
         }
 
         public void LogMessage(string message)
         {
-            if (_filePath == null)
-            {
-                return;
-            }
-
             File.AppendAllLines(_filePath, new[] { $"[{NowStr}]: {message}" });
         }
     }

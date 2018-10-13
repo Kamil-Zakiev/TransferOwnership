@@ -48,7 +48,7 @@ namespace UI
 
             do
             {
-                _logger.LogMessage($"Получаем файлы старого пользователя с использованием токена '{listRequest.PageToken??"<null>"}'.");
+                _logger.LogMessage($"Получаем файлы старого пользователя с использованием токена c хэшем = '{listRequest.PageToken?.GetHashCode().ToString() ?? "<null>"}'.");
                 var listResult = listRequest.Execute();
                 var filesChunk = listResult.Files;
                 listRequest.PageToken = listResult.NextPageToken;
@@ -279,7 +279,7 @@ namespace UI
                 _expBackoffPolicy.GrantedDelivery(
                     () =>
                     {
-                        _logger.LogMessage($"Отправка пакета на сервер Google Drive.");
+                        _logger.LogMessage($"Отправка пакета на сервер Google Drive...");
                         batch.ExecuteAsync().Wait();
                         _logger.LogMessage($"Отправка пакета на сервер Google Drive прошла успешно.");
                     }, 
@@ -293,7 +293,7 @@ namespace UI
                         {
                             newBatch.Queue(requestInfo.Request, batchCallback);
                         }
-                        _logger.LogMessage($"Сформирован новый пакет запросов из {newBatch.Count} штук.");
+                        _logger.LogMessage($"Сформирован новый пакет запросов из {newBatch.Count} штук...");
                         newBatch.ExecuteAsync().Wait();
                         _logger.LogMessage($"Отправка пакета на сервер Google Drive прошла успешно.");
                     });

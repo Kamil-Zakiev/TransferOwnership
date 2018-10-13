@@ -132,7 +132,7 @@ namespace UI
                 progressBar1.Visible = false;
                 var execSec = (double)stopWatch.ElapsedMilliseconds / 1000;
                 MessageBox.Show(null,
-                       $"Перенос завершен. Время работы программы {execSec.ToString("F2")} секунд)",
+                       $"Перенос завершен. Время работы программы {execSec.ToString("F2")} секунд",
                        "Сообщение",
                        MessageBoxButtons.OK,
                        MessageBoxIcon.Information);
