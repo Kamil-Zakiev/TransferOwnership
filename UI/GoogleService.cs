@@ -68,6 +68,8 @@ namespace UI
 
             } while (true);
 
+            _logger.LogMessage("Файлы старого пользователя получены.");
+
 
             return files
                 .Where(file => file.OwnedByMe.HasValue && file.OwnedByMe.Value)
@@ -92,7 +94,7 @@ namespace UI
                 return _userInfo;
             }
 
-            _logger.LogMessage($"Получаем данные о пользователе.");
+            _logger.LogMessage("Получаем данные о пользователе.");
 
             const string defaultUserUrl = "https://icon-icons.com/icons2/1378/PNG/512/avatardefault_92824.png";
             var aboutGet = _driveService.About.Get();
@@ -100,10 +102,14 @@ namespace UI
 
             var user = aboutGet.Execute().User;
 
-            _logger.LogMessage($"Получаем данные о корневой папке.");
+            _logger.LogMessage("Данные о пользователе получены.");
+
+            _logger.LogMessage("Получаем данные о корневой папке.");
             var rootgetCommand = _driveService.Files.Get("root");
             rootgetCommand.Fields = "id";
             var rootId = rootgetCommand.Execute().Id;
+
+            _logger.LogMessage("Данные о корневой папке получены.");
 
             return _userInfo = new UserInfo
             {
@@ -116,19 +122,23 @@ namespace UI
 
         public void DeleteOwnershipPermission(IReadOnlyList<FileDTO> files)
         {
-            _logger.LogMessage($"Запускаем функцию удаления прав старого пользователя в пакетном режиме.");
+            _logger.LogMessage("Запускаем функцию удаления прав старого пользователя в пакетном режиме.");
             WrapBatchOperation(files, file => _driveService.Permissions.Delete(file.Id, file.OwnershipPermissionId));
+
+            _logger.LogMessage("Функция удаления прав старого пользователя завершила свою работу.");
         }
 
         public void RejectRights(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<FileDTO> callback)
         {
-            _logger.LogMessage($"Запускаем функцию переноса гугл-документов.");
+            _logger.LogMessage("Запускаем функцию переноса гугл-документов.");
             var googleFiles = files.Where(file => _googleAppTypes.Contains(file.MimeType)).ToArray();
             TransferOwnershipTo(googleFiles, newOwnerGoogleService, callback);
+            _logger.LogMessage("Переноса гугл-документов завершен.");
 
-            _logger.LogMessage($"Запускаем функцию переноса обычных файлов.");
+            _logger.LogMessage("Запускаем функцию переноса обычных файлов.");
             var loadedFiles = files.Except(googleFiles).ToArray();
             ReloadFromNewUser(loadedFiles, newOwnerGoogleService, callback);
+            _logger.LogMessage("Перенос обычных файлов завершен.");
         }
 
         private void TransferOwnershipTo(IReadOnlyList<FileDTO> googleFiles, IGoogleService newOwnerGoogleService, Action<FileDTO> callback)
@@ -151,26 +161,23 @@ namespace UI
                 })
                 .ToArray();
 
-            _logger.LogMessage($"Запускаем функцию переноса гугл-документов в пакетном режиме.");
+            _logger.LogMessage("Запускаем функцию переноса гугл-документов в пакетном режиме.");
             WrapBatchOperation(commandsDto, commandDto => commandDto.command, (index) => callback(googleFiles[index]));
             
-            _logger.LogMessage("Останавливаем поток на 2 секунды, чтобы все изменения сохранились в сервисах Google Drive");
-            Thread.Sleep(2000);
-
             // removing edit permissions
-            _logger.LogMessage($"Останавливаем поток на 2 секунды, чтобы все данные сохранились в сервисах Google Drive");
+            _logger.LogMessage("Останавливаем поток на 2 секунды, чтобы все данные сохранились в сервисах Google Drive");
             Thread.Sleep(2000);
             newOwnerGoogleService.DeleteOwnershipPermission(googleFiles);
 
             // correct dirs chain
-            _logger.LogMessage($"Останавливаем поток на 2 секунды, чтобы все данные сохранились в сервисах Google Drive");
+            _logger.LogMessage("Останавливаем поток на 2 секунды, чтобы все данные сохранились в сервисах Google Drive");
             Thread.Sleep(2000);
             newOwnerGoogleService.RecoverParents(googleFiles);
         }
         
         public void RecoverParents(IReadOnlyList<FileDTO> files)
         {
-            _logger.LogMessage($"Восстанавливаем иерархию для гугл-документов.");
+            _logger.LogMessage("Восстанавливаем иерархию для гугл-документов.");
             var rootId = GetUserInfo().RootFolderId;
 
             var filesData = GetOwnedFiles();
@@ -187,11 +194,13 @@ namespace UI
                 updateCommand.RemoveParents = rootId;
                 return updateCommand;
             });
+
+            _logger.LogMessage("Восстанавливание иерархии для гугл-документов закончено.");
         }
 
         private void ReloadFromNewUser(IReadOnlyList<FileDTO> files, IGoogleService newOwnerGoogleService, Action<FileDTO> callback)
         {
-            _logger.LogMessage($"Перезагружаем файлы от имени нового пользователя.");
+            _logger.LogMessage("Перезагружаем файлы от имени нового пользователя.");
             var rootId = GetUserInfo().RootFolderId;
 
             var filesToBeTrashed = new List<string>();
@@ -228,15 +237,16 @@ namespace UI
             }
 
             // delete
-            _logger.LogMessage($"Удаляем файлы старого пользователя в пакетном режиме.");
+            _logger.LogMessage("Удаляем файлы старого пользователя в пакетном режиме.");
             WrapBatchOperation(files, file => _driveService.Files.Delete(file.Id));
 
             newOwnerGoogleService.TrashFiles(filesToBeTrashed);
+            _logger.LogMessage("Файлы старого пользователя удалены.");
         }
 
         private void WrapBatchOperation<TSource>(IReadOnlyList<TSource> sourceList, Func<TSource, IClientServiceRequest> commandProvider, Action<int> callback = null)
         {
-            _logger.LogMessage($"Начало пакетной операции.");
+            _logger.LogMessage("Начало пакетной операции.");
             // nonlinear logic!
             List<RequestsInfo> requestsInfo = null;
             BatchRequest.OnResponse<object> batchCallback = (_, error, index, __) =>
@@ -301,7 +311,7 @@ namespace UI
                     });
                 consideredCount += batchSources.Length;
             }
-            _logger.LogMessage($"Пакетная операция завершена.");
+            _logger.LogMessage("Пакетная операция завершена.");
         }
 
         class RequestsInfo
