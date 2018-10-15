@@ -39,7 +39,10 @@ namespace UI
 
         public IReadOnlyList<FileDTO> GetOwnedFiles()
         {
+            var currentUser = GetUserInfo();
+
             var listRequest = _driveService.Files.List();
+            listRequest.Q = $"'{currentUser.EmailAddress}' in owners";
             listRequest.Fields = "nextPageToken,files(owners,ownedByMe,name,id,mimeType,parents,explicitlyTrashed,permissions)";
             var pageSize = 100;
             listRequest.PageSize = pageSize;
@@ -65,7 +68,6 @@ namespace UI
 
             } while (true);
 
-            var currentUser = GetUserInfo();
 
             return files
                 .Where(file => file.OwnedByMe.HasValue && file.OwnedByMe.Value)
