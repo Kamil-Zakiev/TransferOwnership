@@ -73,7 +73,7 @@ namespace UI
             {
                 var userInfo = t.Result;
                 OldOnerNameLabel.Text = userInfo.Name + " (" + userInfo.EmailAddress + ")";
-                pictureBox1.Load(userInfo.PhotoLink.AbsoluteUri);
+                //pictureBox1.Load(userInfo.PhotoLink.AbsoluteUri);
 
                 textBox1.Text = "";
                 var sb = new StringBuilder();
@@ -91,19 +91,28 @@ namespace UI
         private void button1_Click(object sender, EventArgs e)
         {
             var authTask = NewOwnerAuthService.Authorize();
-            authTask.ContinueWith(t =>
+            var contTask = authTask.ContinueWith(t =>
             {
                 var service = new DriveService(new BaseClientService.Initializer()
                 {
                     HttpClientInitializer = t.Result,
                     ApplicationName = ApplicationName,
                 });
+
+                _logger.LogMessage("Создан сервис Гугла для обработки запросов");
                 NewOwnerGoogleService = new GoogleService(service, _expBackoffPolicy, _logger);
 
                 var userInfo = NewOwnerGoogleService.GetUserInfo();
                 label1.Text = userInfo.Name + " (" + userInfo.EmailAddress + ")";
-                pictureBox2.Load(userInfo.PhotoLink.AbsoluteUri);
+                // pictureBox2.Load(userInfo.PhotoLink.AbsoluteUri);
             }, CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.FromCurrentSynchronizationContext());
+
+            contTask.ContinueWith(t =>
+            {
+                var message = Helpers.GetFullMessage(t.Exception);
+                _logger.LogMessage(message);
+                MessageBox.Show(message);
+            }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.FromCurrentSynchronizationContext());
         }
 
         private void AddPermToTest_Click(object sender, EventArgs e)
