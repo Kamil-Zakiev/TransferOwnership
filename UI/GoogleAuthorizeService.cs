@@ -46,8 +46,7 @@ namespace UI
                     _scopes,
                     "user",
                     CancellationToken.None,
-                    _store,
-                    new EmbeddedBrowserCodeReceiver()
+                    _store
                     );
 
                 return creds;

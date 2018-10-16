@@ -73,7 +73,7 @@ namespace UI
             {
                 var userInfo = t.Result;
                 OldOnerNameLabel.Text = userInfo.Name + " (" + userInfo.EmailAddress + ")";
-                //pictureBox1.Load(userInfo.PhotoLink.AbsoluteUri);
+                pictureBox1.Load(userInfo.PhotoLink.AbsoluteUri);
 
                 textBox1.Text = "";
                 var sb = new StringBuilder();
@@ -104,7 +104,7 @@ namespace UI
 
                 var userInfo = NewOwnerGoogleService.GetUserInfo();
                 label1.Text = userInfo.Name + " (" + userInfo.EmailAddress + ")";
-                // pictureBox2.Load(userInfo.PhotoLink.AbsoluteUri);
+                pictureBox2.Load(userInfo.PhotoLink.AbsoluteUri);
             }, CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.FromCurrentSynchronizationContext());
 
             contTask.ContinueWith(t =>
