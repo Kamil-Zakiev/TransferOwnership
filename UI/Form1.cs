@@ -4,9 +4,7 @@ using System.Windows.Forms;
 using Google.Apis.Services;
 using System.Text;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Linq;
-using System.Threading;
 using System.Diagnostics;
 
 namespace UI
@@ -25,7 +23,7 @@ namespace UI
             _expBackoffPolicy = expBackoffPolicy ?? throw new ArgumentNullException(nameof(expBackoffPolicy));
 
             InitializeComponent();
-            var formLogger = new FormLoggerDecorator(logger, textBox2, TaskScheduler.FromCurrentSynchronizationContext());
+            var formLogger = new FormLoggerDecorator(logger, textBox2);
             _logger = formLogger;
 
             label2.Text = string.Empty;
@@ -46,73 +44,51 @@ namespace UI
 
         private void QuickStartBtn_Click(object sender, EventArgs e)
         {
-            var authTask = OldOwnerAuthService.Authorize();
-            var serviceCreationTask = authTask.ContinueWith(t =>
+            var httpClientInitializer = OldOwnerAuthService.Authorize();
+            var service = new DriveService(new BaseClientService.Initializer()
             {
-                var service = new DriveService(new BaseClientService.Initializer()
-                {
-                    HttpClientInitializer = t.Result,
-                    ApplicationName = ApplicationName,
-                });
-                OldOwnerGoogleService = new GoogleService(service, _expBackoffPolicy, _logger);
-            }, TaskContinuationOptions.OnlyOnRanToCompletion);
-
-            serviceCreationTask.ContinueWith(t => UpdateFileList(), CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.FromCurrentSynchronizationContext());
+                HttpClientInitializer = httpClientInitializer,
+                ApplicationName = ApplicationName,
+            });
+            OldOwnerGoogleService = new GoogleService(service, _expBackoffPolicy, _logger);
+            UpdateFileList();
         }
 
         private void UpdateFileList()
         {
-            var onServiceCreatedTask = Task.Run(() =>
+            files = OldOwnerGoogleService.GetOwnedFiles().OrderBy(file => file.MimeType).ThenBy(file => file.Name).ToArray();
+            var userInfo = OldOwnerGoogleService.GetUserInfo();
+
+            OldOnerNameLabel.Text = userInfo.Name + " (" + userInfo.EmailAddress + ")";
+            //pictureBox1.Load(userInfo.PhotoLink.AbsoluteUri);
+
+            textBox1.Text = "";
+            var sb = new StringBuilder();
+            sb.AppendLine($"Мои файлы и папки ({files.Count} шт.): ");
+            foreach (var file in files)
             {
-                files = OldOwnerGoogleService.GetOwnedFiles().OrderBy(file => file.MimeType).ThenBy(file => file.Name).ToArray();
-                var userInfo = OldOwnerGoogleService.GetUserInfo();
-                return userInfo;
-            });
+                var prefix = file.MimeType == "application/vnd.google-apps.folder" ? "[Папка]: " : string.Empty;
+                sb.AppendLine($"{prefix}{file.Name}");
+            }
 
-            onServiceCreatedTask.ContinueWith(t =>
-            {
-                var userInfo = t.Result;
-                OldOnerNameLabel.Text = userInfo.Name + " (" + userInfo.EmailAddress + ")";
-                //pictureBox1.Load(userInfo.PhotoLink.AbsoluteUri);
-
-                textBox1.Text = "";
-                var sb = new StringBuilder();
-                sb.AppendLine($"Мои файлы и папки ({files.Count} шт.): ");
-                foreach (var file in files)
-                {
-                    var prefix = file.MimeType == "application/vnd.google-apps.folder" ? "[Папка]: " : string.Empty;
-                    sb.AppendLine($"{prefix}{file.Name}");
-                }
-
-                textBox1.Text = sb.ToString();
-            }, CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.FromCurrentSynchronizationContext());
+            textBox1.Text = sb.ToString();
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
-            var authTask = NewOwnerAuthService.Authorize();
-            var contTask = authTask.ContinueWith(t =>
+            var httpClientInitializer = NewOwnerAuthService.Authorize();
+            var service = new DriveService(new BaseClientService.Initializer()
             {
-                var service = new DriveService(new BaseClientService.Initializer()
-                {
-                    HttpClientInitializer = t.Result,
-                    ApplicationName = ApplicationName,
-                });
+                HttpClientInitializer = httpClientInitializer,
+                ApplicationName = ApplicationName,
+            });
 
-                _logger.LogMessage("Создан сервис Гугла для обработки запросов");
-                NewOwnerGoogleService = new GoogleService(service, _expBackoffPolicy, _logger);
+            _logger.LogMessage("Создан сервис Гугла для обработки запросов");
+            NewOwnerGoogleService = new GoogleService(service, _expBackoffPolicy, _logger);
 
-                var userInfo = NewOwnerGoogleService.GetUserInfo();
-                label1.Text = userInfo.Name + " (" + userInfo.EmailAddress + ")";
-                // pictureBox2.Load(userInfo.PhotoLink.AbsoluteUri);
-            }, CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.FromCurrentSynchronizationContext());
-
-            contTask.ContinueWith(t =>
-            {
-                var message = Helpers.GetFullMessage(t.Exception);
-                _logger.LogMessage(message);
-                MessageBox.Show(message);
-            }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.FromCurrentSynchronizationContext());
+            var userInfo = NewOwnerGoogleService.GetUserInfo();
+            label1.Text = userInfo.Name + " (" + userInfo.EmailAddress + ")";
+            // pictureBox2.Load(userInfo.PhotoLink.AbsoluteUri);
         }
 
         private void AddPermToTest_Click(object sender, EventArgs e)
@@ -122,42 +98,23 @@ namespace UI
             progressBar1.Maximum = files.Count;
             label2.Text = ((double)progressBar1.Value / progressBar1.Maximum).ToString("P");
 
-            var syncContextScheduler = TaskScheduler.FromCurrentSynchronizationContext();
-
-            var transferTask = new Task(() => OldOwnerGoogleService.RejectRights(files, NewOwnerGoogleService, file =>
+            var stopWatch = new Stopwatch();  
+            stopWatch.Start(); 
+            OldOwnerGoogleService.RejectRights(files, NewOwnerGoogleService, file =>
             {
-                var task = new Task(() => {
-                    label2.Text = ((double)progressBar1.Value/ progressBar1.Maximum).ToString("P");
-                    progressBar1.Increment(1);
-                });
-                task.Start(syncContextScheduler);
-            }));
+                label2.Text = ((double) progressBar1.Value / progressBar1.Maximum).ToString("P");
+                progressBar1.Increment(1);
+            });
 
-            var stopWatch = new Stopwatch();            
-            transferTask.ContinueWith(t =>
-            {
-                stopWatch.Stop();
-                UpdateFileList();
-                progressBar1.Visible = false;
-                var execSec = (double)stopWatch.ElapsedMilliseconds / 1000;
-                MessageBox.Show(null,
-                       $"Перенос завершен. Время работы программы {execSec.ToString("F2")} секунд",
-                       "Сообщение",
-                       MessageBoxButtons.OK,
-                       MessageBoxIcon.Information);
-            }, CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, syncContextScheduler);
-
-            transferTask.ContinueWith(t =>
-            {
-                var message = Helpers.GetFullMessage(t.Exception);
-                MessageBox.Show(null, message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-
-                UpdateFileList();
-                progressBar1.Visible = false;
-            }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, syncContextScheduler);
-
-            transferTask.Start();
-            stopWatch.Start();
+            stopWatch.Stop();
+            UpdateFileList();
+            progressBar1.Visible = false;
+            var execSec = (double)stopWatch.ElapsedMilliseconds / 1000;
+            MessageBox.Show(null,
+                $"Перенос завершен. Время работы программы {execSec.ToString("F2")} секунд",
+                "Сообщение",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
         }
 
         private void button2_Click(object sender, EventArgs e)

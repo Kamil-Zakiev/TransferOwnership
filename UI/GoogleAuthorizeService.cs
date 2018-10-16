@@ -5,7 +5,6 @@ using Google.Apis.Util.Store;
 using System;
 using System.IO;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace UI
 {
@@ -37,20 +36,19 @@ namespace UI
             _store = new FileDataStore(_credPath, true);
         }
 
-        public async Task<IConfigurableHttpClientInitializer> Authorize()
+        public IConfigurableHttpClientInitializer Authorize()
         {
             using (var stream = new FileStream(_configFile, FileMode.Open, FileAccess.Read))
             {
-                var creds = await GoogleWebAuthorizationBroker.AuthorizeAsync(
+                var credsTask = GoogleWebAuthorizationBroker.AuthorizeAsync(
                     GoogleClientSecrets.Load(stream).Secrets,
                     _scopes,
                     "user",
                     CancellationToken.None,
-                    _store,
-                    new EmbeddedBrowserCodeReceiver()
-                    );
+                    _store);
+                credsTask.Wait();
 
-                return creds;
+                return credsTask.Result;
             }
         }
 

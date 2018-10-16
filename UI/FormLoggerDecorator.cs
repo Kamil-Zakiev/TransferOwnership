@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace UI
@@ -11,15 +10,13 @@ namespace UI
 
         private LinkedList<string> _log = new LinkedList<string>();
 
-        public FormLoggerDecorator(ILogger logger, TextBox textBox, TaskScheduler taskScheduler)
+        public FormLoggerDecorator(ILogger logger, TextBox textBox)
         {
             _textBox = textBox;
             _logger = logger;
-            _taskScheduler = taskScheduler;
         }
 
         private ILogger _logger;
-        private TaskScheduler _taskScheduler;
 
         public void LogMessage(string message)
         {
@@ -31,9 +28,7 @@ namespace UI
             }
 
             var newLogStr = string.Join(Environment.NewLine, _log);
-            var task = new Task(() =>  _textBox.Text = newLogStr);
-            task.Start(_taskScheduler);
-
+            _textBox.Text = newLogStr;
             _logger.LogMessage(message);
         }
     }
