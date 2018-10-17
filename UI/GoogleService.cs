@@ -211,7 +211,7 @@ namespace UI
                 var stream = new MemoryStream();
 
                 // download
-                _logger.LogMessage($"Скачиваем файл {file.Name} ({file.Id}).");
+                _logger.LogMessage($"Скачиваем файл \"{file.Name}\" ({file.Id}).");
                 _expBackoffPolicy.GrantedDelivery(() => request.Download(stream));
 
                 // upload
@@ -233,7 +233,7 @@ namespace UI
 
                     callback(file);
                 });
-                _logger.LogMessage($"Загрузили файл {file.Name}.");
+                _logger.LogMessage($"Загрузили файл \"{file.Name}\".");
             }
 
             // delete
@@ -332,7 +332,7 @@ namespace UI
 
         public string UploadFile(FileDTO file, Stream stream)
         {
-            _logger.LogMessage($"Загрузка файла {file.Name} на сервер Google Drive в одиночном режиме.");
+            _logger.LogMessage($"Загрузка файла \"{file.Name}\" на сервер Google Drive в одиночном режиме.");
             var createFileCommand = _driveService.Files.Create(new Google.Apis.Drive.v3.Data.File
                 {
                     Name = file.Name,
@@ -340,7 +340,7 @@ namespace UI
                 }, stream, file.MimeType);
             createFileCommand.Fields = "id";
             _expBackoffPolicy.GrantedDelivery(() => createFileCommand.Upload());
-            _logger.LogMessage($"Загрузка файла {file.Name} завершена.");
+            _logger.LogMessage($"Загрузка файла \"{file.Name}\" завершена.");
 
             return createFileCommand.ResponseBody?.Id;
         }
