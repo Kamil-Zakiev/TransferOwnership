@@ -98,6 +98,7 @@ namespace UI
             progressBar1.Maximum = files.Count;
             label2.Text = ((double)progressBar1.Value / progressBar1.Maximum).ToString("P");
 
+            tabControl1.SelectTab(1);
             var stopWatch = new Stopwatch();  
             stopWatch.Start(); 
             OldOwnerGoogleService.RejectRights(files, NewOwnerGoogleService, file =>
