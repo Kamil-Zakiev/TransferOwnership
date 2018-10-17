@@ -124,6 +124,7 @@ namespace UI
 
             var syncContextScheduler = TaskScheduler.FromCurrentSynchronizationContext();
 
+            tabControl1.SelectTab(1);
             var transferTask = new Task(() => OldOwnerGoogleService.RejectRights(files, NewOwnerGoogleService, file =>
             {
                 var task = new Task(() => {
