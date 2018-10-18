@@ -51,7 +51,7 @@ namespace UI
 
             do
             {
-                _logger.LogMessage($"Получаем файлы старого пользователя с использованием токена c хэшем = '{listRequest.PageToken?.GetHashCode().ToString() ?? "<null>"}'.");
+                _logger.LogMessage($"Получаем файлы пользователя '{currentUser.EmailAddress}' с использованием токена c хэшем = '{listRequest.PageToken?.GetHashCode().ToString() ?? "<null>"}'.");
                 var listResult = listRequest.Execute();
                 var filesChunk = listResult.Files;
                 listRequest.PageToken = listResult.NextPageToken;
@@ -68,8 +68,7 @@ namespace UI
 
             } while (true);
 
-            _logger.LogMessage("Файлы старого пользователя получены.");
-
+            _logger.LogMessage($"Файлы пользователя '{currentUser.EmailAddress}' получены.");
 
             return files
                 .Where(file => file.OwnedByMe.HasValue && file.OwnedByMe.Value)
@@ -102,7 +101,7 @@ namespace UI
 
             var user = aboutGet.Execute().User;
 
-            _logger.LogMessage("Данные о пользователе получены.");
+            _logger.LogMessage($"Данные о пользователе '{user.EmailAddress}' получены.");
 
             _logger.LogMessage("Получаем данные о корневой папке.");
             var rootgetCommand = _driveService.Files.Get("root");
@@ -182,7 +181,7 @@ namespace UI
 
             var filesData = GetOwnedFiles();
 
-            _logger.LogMessage($"Восстанавливаем иерархию для гугл-документов в пакетном режиме.");
+            _logger.LogMessage("Восстанавливаем иерархию для гугл-документов в пакетном режиме.");
             WrapBatchOperation(filesData, fileData => 
             {
                 if (fileData.Parents == null || fileData.Parents.Count == 1 || !fileData.Parents.Contains(rootId))
@@ -265,10 +264,10 @@ namespace UI
             };
 
             var consideredCount = 0;
-            const int BatchSize = 100;
+            const int batchSize = 100;
             while (consideredCount != sourceList.Count)
             {
-                var batchSources = sourceList.Skip(consideredCount).Take(BatchSize).ToArray();
+                var batchSources = sourceList.Skip(consideredCount).Take(batchSize).ToArray();
 
                 var batch = new BatchRequest(_driveService);
                 requestsInfo = new List<RequestsInfo>();
